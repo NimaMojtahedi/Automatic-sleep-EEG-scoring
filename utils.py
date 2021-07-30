@@ -9,7 +9,7 @@ def IO():
     return io
 
 
-def eeg_reader(data_path, labels, orders, epoch_length=1e4, z_score=False):
+def eeg_reader(data_path, labels, orders, epoch_length=1e4):
     """
     This is custome writen function to read eegdata from .mat file which saved in h5 format.
     It has some preassumptions about data structure (3 channel data)
@@ -69,14 +69,7 @@ def eeg_reader(data_path, labels, orders, epoch_length=1e4, z_score=False):
     # getting number of features (channels)
     nr_features = signals.shape[1]
 
-    # make auxiliary data
-    if z_score:
-        data_aux, dim0, t, f = make_aux_data(
-            zscore(signals), epoch_length, labels)
-    else:
-        data_aux, dim0, t, f = make_aux_data(signals, epoch_length, labels)
-
-    return data_aux, labels, epoch_length, nr_classes, t, f, signals
+    return signals, labels, epoch_length, nr_classes
 
 
 def make_aux_data(data, epoch_length, labels):
@@ -116,3 +109,10 @@ def make_aux_data(data, epoch_length, labels):
         raise NameError('label length is different than batch nr in data')
 
     return data_aux, dim_0, t, f
+
+
+def check_installed_packages():
+    """
+    using this function we are checking if user computer has all required packages
+    """
+    pass

@@ -23,11 +23,3 @@ def pre_processing():
     from sklearn import preprocessing
 
     return preprocessing
-
-    def IO():
-        """
-        This is wraper function around MNE input/oupt modules
-        """
-        from mne import io
-
-        return io
