@@ -18,7 +18,7 @@ class Classifier:
     import optuna
     import sklearn.model_selection
     import xgboost as xgb
-    from sklearn.metrics import f1_score
+    from sklearn import metrics
     import numpy as np
     import pdb
 
@@ -45,18 +45,156 @@ class Classifier:
         for key, value in trial.params.items():
             print("    {}: {}".format(key, value))
 
+        return self.xgb.XGBClassifier(**trial.params)
+
     def run_lgb(self):
         # has problem to load module
         pass
 
-    def run_svc(self):
-        pass
+    def run_svc(self, n_trials=100):
+        # running xgb classifier and automatically optimizing paramters
+        study = self.optuna.create_study(direction="maximize")
+        study.optimize(self.svc_objective, n_trials=n_trials, timeout=600)
 
-    def run_rfc(self):
-        pass
+        print("Number of finished trials: ", len(study.trials))
+        print("Best trial:")
+        trial = study.best_trial
 
-    def run_adaBoost(self):
-        pass
+        print("  Value: {}".format(trial.value))
+        print("  Params: ")
+        for key, value in trial.params.items():
+            print("    {}: {}".format(key, value))
+
+        return self.SVC(**trial.params)
+
+    def run_rfc(self, n_trials=100):
+        # running xgb classifier and automatically optimizing paramters
+        study = self.optuna.create_study(direction="maximize")
+        study.optimize(self.rfc_objective, n_trials=n_trials, timeout=600)
+
+        print("Number of finished trials: ", len(study.trials))
+        print("Best trial:")
+        trial = study.best_trial
+
+        print("  Value: {}".format(trial.value))
+        print("  Params: ")
+        for key, value in trial.params.items():
+            print("    {}: {}".format(key, value))
+
+        return self.RandomForestClassifier(**trial.params)
+
+    def run_adaBoost(self, n_trials=100):
+        # running xgb classifier and automatically optimizing paramters
+        study = self.optuna.create_study(direction="maximize")
+        study.optimize(self.ada_objective, n_trials=n_trials, timeout=600)
+
+        print("Number of finished trials: ", len(study.trials))
+        print("Best trial:")
+        trial = study.best_trial
+
+        print("  Value: {}".format(trial.value))
+        print("  Params: ")
+        for key, value in trial.params.items():
+            print("    {}: {}".format(key, value))
+
+        return self.AdaBoostClassifier(**trial.params)
+
+    def rfc_objective(self, trial):
+        # define parameters
+        param = {
+            # n_estimators
+            "n_estimators": trial.suggest_int("n_estimators", 20, 1000, 20),
+            # criterion
+            "criterion": trial.suggest_categorical("criterion", ["gini", "entropy"]),
+            # min_samples_split
+            "min_samples_split": trial.suggest_float("min_samples_split", 0.01, 0.5),
+            # min_samples_leaf
+            "min_samples_leaf": trial.suggest_float("min_samples_leaf", 0.01, 0.5),
+            # parallel
+            "n_jobs": -1,
+            # class_weight
+            "class_weight": trial.suggest_categorical('class_weight', ["balanced", "balanced_subsample"]),
+            # complexity paramter
+            "ccp_alpha": trial.suggest_float("ccp_alpha", 1e-6, 1., log=True),
+            # max sample
+            "max_samples": trial.suggest_float("max_samples", .5, 1)
+        }
+
+        # fitting model
+        brfc = self.RandomForestClassifier(
+            **param).fit(self.Xtrain, self.ytrain)
+
+        preds = brfc.predict(self.Xtest)
+        # self.pdb.set_trace()
+        pred_labels = self.np.rint(preds)
+        try:
+            accuracy = self.metrics.f1_score(
+                self.ytest, pred_labels, average='weighted')
+        except:
+            accuracy = 0.1
+        return accuracy
+
+    def ada_objective(self, trial):
+
+        # define parameters
+        param = {
+            # number of estimators
+            "n_estimators": trial.suggest_int("n_estimators", 10, 1000, 20),
+            # learning rate
+            "learning_rate": trial.suggest_float("learning_rate", 1e-1, 1e1, log=True),
+            # algorithm
+            "algorithm": trial.suggest_categorical("algorithm", ["SAMME", "SAMME.R"]),
+        }
+
+        # fitting model
+        try:
+            bada = self.AdaBoostClassifier(
+                **param).fit(self.Xtrain, self.ytrain)
+
+            preds = bada.predict(self.Xtest)
+            # self.pdb.set_trace()
+            pred_labels = self.np.rint(preds)
+            try:
+                accuracy = self.metrics.f1_score(
+                    self.ytest, pred_labels, average='weighted')
+            except:
+                accuracy = 0.1
+        except:
+            accuracy = 0.1
+        return accuracy
+
+    def svc_objective(self, trial):
+
+        # define parameters
+        param = {
+            # positive regularization parameter
+            "C": trial.suggest_float("C", 1e-3, 1e4, log=True),
+            # kernel type
+            "kernel": trial.suggest_categorical("kernel", ["linear", "poly", "rbf", "sigmoid"]),
+            # degree
+            "degree": trial.suggest_int("degree", 2, 7),
+            # kernel coefficient
+            "gamma": "auto",
+            # size of kernel
+            "cache_size": 500,
+            # class weight
+            "class_weight": "balanced",
+            # decision function
+            "decision_function_shape": trial.suggest_categorical("decision_function_shape", ["ovo", "ovr"]),
+        }
+
+        # fitting model
+        bclf = self.SVC(**param).fit(self.Xtrain, self.ytrain)
+
+        preds = bclf.predict(self.Xtest)
+        # self.pdb.set_trace()
+        pred_labels = self.np.rint(preds)
+        try:
+            accuracy = self.metrics.f1_score(
+                self.ytest, pred_labels, average='weighted')
+        except:
+            accuracy = 0.1
+        return accuracy
 
     def xgb_objective(self, trial):
 
@@ -67,7 +205,7 @@ class Classifier:
         # define parameter space
         param = {
             "verbosity": 0,
-            "objective": "multi:softmax",
+            # "objective": "multi:softmax",
             # use exact for small dataset.
             "tree_method": "exact",
             # defines booster, gblinear for linear functions.
@@ -83,7 +221,7 @@ class Classifier:
             # evaluation metric
             "eval_metric": trial.suggest_categorical("eval_metric", ['merror', 'mlogloss']),
             # number of classes
-            "num_class": len(self.np.unique(self.ytrain)),
+            # "num_class": len(self.np.unique(self.ytrain)),
         }
 
         if param["booster"] in ["gbtree", "dart"]:
@@ -112,7 +250,11 @@ class Classifier:
         preds = bst.predict(dvalid)
         # self.pdb.set_trace()
         pred_labels = self.np.rint(preds)
-        accuracy = self.f1_score(self.ytest, pred_labels, average='weighted')
+        try:
+            accuracy = self.metrics.f1_score(
+                self.ytest, pred_labels, average='weighted')
+        except:
+            accuracy = 0.1
         return accuracy
 
     # https://towardsdatascience.com/multi-class-metrics-made-simple-part-ii-the-f1-score-ebe8b2c2ca1
