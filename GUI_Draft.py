@@ -1,19 +1,19 @@
 from pathlib import Path
-import tkinter as tk
-from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage
+from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage, Frame
 
 # defining a path for icons and assets
-OUTPUT_PATH = Path('/media/ubuntu/casper-rw/upper/home/ubuntu/build/assets').parent
+OUTPUT_PATH = Path("./assets").parent
 ASSETS_PATH = OUTPUT_PATH / Path("./assets")
 
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
 
 # Main window class
-class Application(tk.Frame):
-    def __init__(self, master=None):
+class Main_Window(Frame):
+    def __init__(self, master):
         super().__init__(master)
-        self.master = master
+
+        self.pack()
         self.widgets()
     
     def run(self):
@@ -22,8 +22,7 @@ class Application(tk.Frame):
     #widgets of the main window
     def widgets(self):
         #main background
-        canvas = Canvas(window,
-                        bg = "#FFFFFF",
+        canvas = Canvas(bg = "#FFFFFF",
                         height = 850,
                         width = 1440,
                         bd = 0,
@@ -45,7 +44,7 @@ class Application(tk.Frame):
                                 fill="#BEDFDD",
                                 outline="")
         # Software name and logo when ready
-        # Sleezy as a primary naem :)
+        # Sleezy as a primary na:)
         canvas.create_text(11.0,
                             13.0,
                             anchor="nw",
@@ -67,9 +66,9 @@ class Application(tk.Frame):
                                 fill="#000000",
                                 outline="")
         
-        # creating the buttons as they are in the wirefarme
-        button_image_1 = PhotoImage(file=relative_to_assets("button_1.png"))
-        button_1 = Button(image=button_image_1,
+        # creating the buttons as they are in the wireframe
+        self.button_image_1 = PhotoImage(file=relative_to_assets("button_1.png"))
+        button_1 = Button(image=self.button_image_1,
                             borderwidth=0,
                             highlightthickness=0,
                             command=lambda: print("button_1 clicked"),
@@ -79,8 +78,8 @@ class Application(tk.Frame):
                         width=25.0,
                         height=25.0)
 
-        button_image_2 = PhotoImage(file=relative_to_assets("button_2.png"))
-        button_2 = Button(image=button_image_2,
+        self.button_image_2 = PhotoImage(file=relative_to_assets("button_2.png"))
+        button_2 = Button(image=self.button_image_2,
                         borderwidth=0,
                         highlightthickness=0,
                         command=lambda: print("button_2 clicked"),
@@ -90,8 +89,8 @@ class Application(tk.Frame):
                         width=25.0,
                         height=25.0)
 
-        button_image_3 = PhotoImage(file=relative_to_assets("button_3.png"))
-        button_3 = Button(image=button_image_3,
+        self.button_image_3 = PhotoImage(file=relative_to_assets("button_3.png"))
+        button_3 = Button(image=self.button_image_3,
             borderwidth=0,
             highlightthickness=0,
             command=lambda: print("button_3 clicked"),
@@ -101,8 +100,8 @@ class Application(tk.Frame):
                         width=25.0,
                         height=25.0)
 
-        button_image_4 = PhotoImage(file=relative_to_assets("button_4.png"))
-        button_4 = Button(image=button_image_4,
+        self.button_image_4 = PhotoImage(file=relative_to_assets("button_4.png"))
+        button_4 = Button(image=self.button_image_4,
                     borderwidth=0,
                     highlightthickness=0,
                     command=lambda: print("button_4 clicked"),
@@ -112,8 +111,8 @@ class Application(tk.Frame):
                         width=25.0,
                         height=25.0)
 
-        button_image_5 = PhotoImage(file=relative_to_assets("button_5.png"))
-        button_5 = Button(image=button_image_5,
+        self.button_image_5 = PhotoImage(file=relative_to_assets("button_5.png"))
+        button_5 = Button(image=self.button_image_5,
                         borderwidth=0,
                         highlightthickness=0,
                         command=lambda: print("button_5 clicked"),
@@ -123,8 +122,8 @@ class Application(tk.Frame):
                         width=25.0,
                         height=25.0)
         
-        button_image_6 = PhotoImage(file=relative_to_assets("button_6.png"))
-        button_6 = Button(image=button_image_6,
+        self.button_image_6 = PhotoImage(file=relative_to_assets("button_6.png"))
+        button_6 = Button(image=self.button_image_6,
                         borderwidth=0,
                         highlightthickness=0,
                         command=lambda: print("button_6 clicked"),
@@ -134,8 +133,8 @@ class Application(tk.Frame):
                         width=25.0,
                         height=25.0)
 
-        button_image_7 = PhotoImage(file=relative_to_assets("button_7.png"))
-        button_7 = Button(image=button_image_7,
+        self.button_image_7 = PhotoImage(file=relative_to_assets("button_7.png"))
+        button_7 = Button(image=self.button_image_7,
                         borderwidth=0,
                         highlightthickness=0,
                         command=lambda: print("button_7 clicked"),
@@ -145,8 +144,8 @@ class Application(tk.Frame):
                         width=25.0,
                         height=25.0)
 
-        button_image_8 = PhotoImage(file=relative_to_assets("button_8.png"))
-        button_8 = Button(image=button_image_8,
+        self.button_image_8 = PhotoImage(file=relative_to_assets("button_8.png"))
+        button_8 = Button(image=self.button_image_8,
                         borderwidth=0,
                         highlightthickness=0,
                         command=lambda: print("button_8 clicked"),
@@ -156,8 +155,8 @@ class Application(tk.Frame):
                         width=25.0,
                         height=25.0)
 
-        button_image_9 = PhotoImage(file=relative_to_assets("button_9.png"))
-        button_9 = Button(image=button_image_9,
+        self.button_image_9 = PhotoImage(file=relative_to_assets("button_9.png"))
+        button_9 = Button(image=self.button_image_9,
                         borderwidth=0,
                         highlightthickness=0,
                         command=lambda: print("button_9 clicked"),
@@ -212,11 +211,13 @@ class Application(tk.Frame):
     
     # defining button functions as we progress and replacing them with the above lambda funstions
     def button1_click():
-        print ('Button 1 Clicked')
+        print ("Button 1 Clicked")
         
-if __name__ == '__main__':
-    window = Tk()
-    window.geometry("1440x850")
-    window.configure(bg = "#FFFFFF")
-    app = Application(master=window)
+if __name__ == "__main__":
+    main_window = Tk()
+    main_window.geometry("1440x850")
+    main_window.configure(bg = "#FFFFFF")
+    main_window.title("Sleezy")
+    main_window.resizable(False, False)
+    app = Main_Window(master=main_window)
     app.run()
