@@ -52,23 +52,28 @@ class GUI(Frame):
                               bd=3,
                               highlightthickness=0,
                               relief="ridge")
-        self.frame_up.grid(row=1, column=0, columnspan=2, sticky="nsew")
+        self.frame_up.grid(row=3, column=0, columnspan=2,
+                           sticky="nsew", padx=10)
 
         # adding number of view pannels on up frame
         # here we assume that number is already given in cfg file (example3)
+
         self.up_pannels = {}
         for i in range(3):  # 3 is example here
+
             self.up_pannels[str(i)] = Frame(master=self.frame_up, bg="#fdecf5",
-                                            height=main_app.winfo_screenheight()/6,
-                                            width=self.frame_up.winfo_screenwidth(),
+                                            height=50,  # self.frame_up.winfo_height()/3,
+                                            width=60,  # self.frame_up.winfo_width(),
                                             # bd=3,
                                             highlightthickness=1,
                                             relief="sunken")
-            self.up_pannels[str(i)].pack(expand=True, pady=1, padx=5)
 
+            self.up_pannels[str(i)].grid(row=0, column=0)
+        """
         for k, v in self.up_pannels.items():
             backend().plot_figure(v)
-
+ 
+        """
         self.frame_down_left = Frame(main_app, bg="#BEDFDD",
                                      height=main_app.winfo_screenheight()/4,
                                      width=main_app.winfo_screenwidth()/2,
@@ -257,9 +262,10 @@ class backend:
 
         # create canvas
         canvas = FigureCanvasTkAgg(fig, master_location)
-        toolbar = NavigationToolbar2Tk(canvas, master_location)
-        toolbar.update()
-        canvas._tkcanvas.pack(fill=BOTH, expand=True)
+        #toolbar = NavigationToolbar2Tk(canvas, master_location)
+        # toolbar.update()
+        canvas._tkcanvas.pack(expand=True)
+        #canvas_plot = canvas.get_tk_widget()
 
 
 if __name__ == "__main__":
