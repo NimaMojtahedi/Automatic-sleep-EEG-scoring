@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 from sklearn.metrics import confusion_matrix
 import json
+import pdb
 
 # dash library
 import dash
@@ -62,10 +63,10 @@ header_buttons = html.Div(dbc.Row([
 ]))
 
 
-def plot_traces():
+def plot_traces(index):
 
     # call trace from inside
-    trace = np.random.rand((1000))
+    trace = np.random.rand((1000)) + index
     fig = make_subplots(rows=3, cols=1, shared_xaxes=True,
                         print_grid=False, vertical_spacing=0.05)
 
@@ -78,7 +79,6 @@ def plot_traces():
                       plot_bgcolor='rgba(0,0,0,0)',
                       width=900, height=400,
                       )
-
     return fig
 
 
@@ -155,7 +155,7 @@ app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SKETCHY])
 
 # Graph div
 trace_graphs = html.Div(children=[
-    dcc.Graph(id="ch", figure=plot_traces(), responsive=True)
+    dcc.Graph(id="ch", responsive=True)
 ])
 
 # lower Row (contains all learning graphs and informations + spectrums and histograms)
@@ -198,12 +198,12 @@ lower_row = html.Div(children=[
 
 
 # detecting keyboard keys
-my_keyboard = html.Div([Keyboard(id="keyboard"), html.Div(id="output")])
+my_keyboard = html.Div(Keyboard(id="keyboard"))
 
 
 # define app layout using dbc container
 app.layout = dbc.Container(
-    [html.H1("SleeZy v1.0.0"), header_buttons, trace_graphs, lower_row, my_keyboard], fluid=True)
+    html.Div([html.H1("SleeZy v1.0.0"), header_buttons, trace_graphs, lower_row, my_keyboard]), fluid=False)
 
 
 # all callBacks
@@ -219,12 +219,21 @@ def toggle_collapse(n, is_open):
 
 
 @app.callback(
-    Output("output", "children"),
-    [Input("keyboard", "n_keydowns")],
-    [State("keyboard", "keydown")],
+    Output("ch", "figure"),
+    [Input("keyboard", "keydown"), Input("keyboard", "n_keydowns")]
 )
-def keydown(n_keydowns, event):
-    print(event)
+def keydown(event, n_keydowns):
+    print(n_keydowns)
+    if n_keydowns:
+        if event["key"] == "ArrowLeft":
+            fig = plot_traces(index=np.random.randint(0, 10, 1))
+
+        elif event["key"] == "ArrowRight":
+            fig = plot_traces(index=np.random.randint(0, 10, 1))
+
+        print(event["key"], n_keydowns)
+        return fig
+    return plot_traces(index=0)
 
 
 # run app if it get called
