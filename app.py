@@ -4,6 +4,7 @@
 import pandas as pd
 import numpy as np
 from sklearn.metrics import confusion_matrix
+import json
 
 # dash library
 import dash
@@ -14,6 +15,9 @@ import dash_bootstrap_components as dbc
 from dash import Input, Output, State, html
 import plotly.express as px
 from plotly.subplots import make_subplots
+
+# dash extension
+from dash_extensions import Keyboard
 
 
 # input parameters list
@@ -54,7 +58,7 @@ collapse = html.Div([
 header_buttons = html.Div(dbc.Row([
     dbc.Col(
         html.Div(children=[load_button, save_button, edit_button, help_button]), width=4),
-    dbc.Col(html.Div(children=collapse), width=8)
+    dbc.Col(html.Div(children=collapse), width=6)
 ]))
 
 
@@ -192,13 +196,17 @@ lower_row = html.Div(children=[
     ], className="g-5")
 ])
 
+
+# detecting keyboard keys
+my_keyboard = html.Div([Keyboard(id="keyboard"), html.Div(id="output")])
+
+
 # define app layout using dbc container
 app.layout = dbc.Container(
-    [html.H1("SleeZy v1.0.0"), header_buttons, trace_graphs, lower_row], fluid=True)
+    [html.H1("SleeZy v1.0.0"), header_buttons, trace_graphs, lower_row, my_keyboard], fluid=True)
+
 
 # all callBacks
-
-
 @app.callback(
     Output("collapse", "is_open"),
     [Input("collapse-button", "n_clicks")],
@@ -208,6 +216,15 @@ def toggle_collapse(n, is_open):
     if n:
         return not is_open
     return is_open
+
+
+@app.callback(
+    Output("output", "children"),
+    [Input("keyboard", "n_keydowns")],
+    [State("keyboard", "keydown")],
+)
+def keydown(n_keydowns, event):
+    print(event)
 
 
 # run app if it get called
