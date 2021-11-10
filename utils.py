@@ -6,6 +6,7 @@ import json
 import time
 from json import JSONEncoder
 from joblib import Parallel, delayed
+import pandas as pd
 
 
 def IO():
@@ -156,13 +157,13 @@ def process_input_data(path_to_file, start_index, end_index, epoch_len, fr):
     my_dict = []
 
     # initial info we are feeding in
-    # index = i --> number of epochs
+    # epoch_index = i --> number of epochs
     # data = n * n_ch --> traces per channel for that epoch
     # histograms = hist * n_ch --> amplitude histogram per channel
     # spectrums = spectrum * n_ch --> power spectrum of signals
     print("Running step 1.")
     my_dict = [{"data": data[i*num_sample_per_epoch: (i + 1) * num_sample_per_epoch],
-                "index":i} for i in range(num_of_epoch - 1)]
+                "epoch_index":i} for i in range(num_of_epoch - 1)]
 
     print("Running step 2.")
     for dict_ in my_dict:
@@ -192,13 +193,5 @@ def process_input_data(path_to_file, start_index, end_index, epoch_len, fr):
 # write dictionary to json
 def dict_to_json(path, input_dict):
 
-    with open(path, "w") as f:
-        json.dump(input_dict, f, cls=NumpyArrayEncoder)
-        time.sleep(.01)
-
-
-class NumpyArrayEncoder(JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        return JSONEncoder.default(self, obj)
+    pd.DataFrame(input_dict).to_json(path)
+    time.sleep(.0001)
