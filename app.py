@@ -6,6 +6,7 @@ import numpy as np
 from sklearn.metrics import confusion_matrix
 import json
 import pdb
+import os
 
 # dash library
 import dash
@@ -19,6 +20,9 @@ from plotly.subplots import make_subplots
 
 # dash extension
 from dash_extensions import Keyboard
+
+# dash uploader
+import dash_uploader as du
 
 
 # input parameters list
@@ -45,7 +49,8 @@ save_button = dbc.Button("Save", id="save-button", className="me-2", size="sm")
 # help buttons
 help_button = dbc.Button("Help", id="help-button", className="me-2", size="sm")
 # edit buttons
-edit_button = dbc.Button("Edit", id="edit-button", className="me-2", size="sm")
+edit_button = dbc.Button("upload", id="upload-button",
+                         className="me-2", size="sm")
 
 # parameters buttons
 collapse = html.Div([
@@ -152,6 +157,9 @@ def get_confusion_mat():
 # The second part describes the interactivity of the application
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SKETCHY])
 
+# dash uploader
+du.configure_upload(app, os.path.split(os.getcwd())[0] + "/upload_files")
+data_uploader = du.Upload(id='dash-uploader')
 
 # Graph div
 trace_graphs = html.Div(children=[
@@ -173,6 +181,7 @@ acc_graph = dcc.Graph(id="accuracy", figure=get_acc_plot(
 # hist graphs
 hist_graph = dcc.Graph(id="hist-graphs", figure=get_hists(),
                        responsive=True, style={"width": "90vh", "height": "30vh"})
+
 
 # lower row left-side
 lower_row_left = dbc.Row([
@@ -203,7 +212,7 @@ my_keyboard = html.Div(Keyboard(id="keyboard"))
 
 # define app layout using dbc container
 app.layout = dbc.Container(
-    html.Div([html.H1("SleeZy v1.0.0"), header_buttons, trace_graphs, lower_row, my_keyboard]), fluid=False)
+    html.Div([html.H1("SleeZy v1.0.0"), data_uploader, header_buttons, trace_graphs, lower_row, my_keyboard]), fluid=True)
 
 
 # all callBacks
@@ -236,6 +245,15 @@ def keydown(event, n_keydowns):
     return plot_traces(index=0)
 
 
+@du.callback(
+    output=Output('callback-output', 'children'),
+    id='dash-uploader',
+)
+def get_a_list(filenames):
+
+    return html.Ul([html.Li(filenames)])
+
+
 # run app if it get called
 if __name__ == '__main__':
-    app.run_server(debug=True, threaded=True)
+    app.run_server(debug=False, threaded=True)
