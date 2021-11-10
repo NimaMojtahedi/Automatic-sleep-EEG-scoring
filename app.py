@@ -1,4 +1,4 @@
-# Frond-End file
+# Frontend file
 
 # required libraries
 import pandas as pd
@@ -24,47 +24,114 @@ from dash_extensions import Keyboard
 # dash uploader
 import dash_uploader as du
 
+# university logo path
+University_Logo = "https://upload.wikimedia.org/wikipedia/de/9/97/Eberhard_Karls_Universit%C3%A4t_T%C3%BCbingen.svg"
 
-# input parameters list
+# search bar
+search_bar = dbc.Row(
+    [
+        dbc.Col(dbc.Input(type="search", placeholder="Search")),
+        dbc.Col(
+            dbc.Button(
+                "Search epoch", color="primary", className="ms-2", n_clicks=0
+            ),
+            width="auto",
+        ),
+    ],
+    className="g-0 ms-auto flex-nowrap mt-3 mt-md-0",
+    align="center",
+)
+
+# save button (deparcated)
+#save_button = dbc.Button("Save", id="save-button", className="me-2", size="sm")
+
+# navigation toolbar with logo, software title and a button
+navbar = dbc.Navbar(
+    dbc.Container(
+        [
+            html.A(
+                dbc.Row(
+                    [
+                        dbc.Col(html.Img(src=University_Logo, height="40px")),
+                        dbc.Col(dbc.NavbarBrand("Sleeezy", className="ms-2")),
+                        dbc.Button("About Us", id="about-us-button", className="me-2", size="sm")
+                    ],
+                    align="left",
+                    className="g-0",
+                ),
+                href="http://www.physiologie2.uni-tuebingen.de/",
+                style={"textDecoration": "none"},
+            ),
+            dbc.NavbarToggler(id="navbar-toggler", n_clicks=0),
+            dbc.Collapse(
+                search_bar,
+                id="navbar-collapse",
+                is_open=False,
+                navbar=True,
+            ),
+        ]
+    ),
+    color="info",
+    dark=True,
+)
+
+# draft training parameters list
 input_params = html.Div([
-    dbc.InputGroup([dbc.InputGroupText("input 1"), dbc.Input(
-        placeholder="input1")], className="mb-1"),
-    dbc.InputGroup([dbc.InputGroupText("input 2"), dbc.Input(
-        placeholder="input2")], className="mb-1"),
-    dbc.InputGroup([dbc.InputGroupText("input 3"), dbc.Input(
-        placeholder="input3")], className="mb-1"),
-    dbc.InputGroup([dbc.InputGroupText("input 4"), dbc.Input(
-        placeholder="input4")], className="mb-1"),
-    dbc.InputGroup([dbc.InputGroupText("input 5"), dbc.Input(
-        placeholder="input5")], className="mb-1")
+    dbc.InputGroup([dbc.InputGroupText("ML algorithm"), dbc.Input(
+        placeholder="Which ML you want to use?")], className="mb-1"),
+    dbc.InputGroup([dbc.InputGroupText("nThread"), dbc.Input(
+        placeholder="The number of dedicated threads")], className="mb-1"),
+    dbc.InputGroup([dbc.InputGroupText("GPU"), dbc.Input(
+        placeholder="1 for yes, 0 for no")], className="mb-1"),
+    dbc.InputGroup([dbc.InputGroupText("Lag time"), dbc.Input(
+        placeholder="How much you can wait for training")], className="mb-1")
+])
+
+# config menu items
+config_menu_items = html.Div([
+    dbc.DropdownMenuItem("Human", id="dropdown-menu-item-1"),
+    dbc.DropdownMenuItem("Rodent", id="dropdown-menu-item-2"),
+    dbc.DropdownMenuItem(divider=True),
+    dbc.DropdownMenuItem("Custom", id="dropdown-menu-item-3"),
+])
+
+# import configs
+input_config = html.Div([
+    dbc.InputGroup([
+        dbc.DropdownMenu(config_menu_items, label="Species"),
+        dbc.Input(id="input-group-dropdown-input", placeholder="Epoch length")]),
+    dbc.InputGroup([dbc.InputGroupText("Channels to import"), dbc.Input(
+        placeholder="How many channels do you have?")], className="mb-1")
 ])
 
 
 # initialize header buttons
-
-# load buttons
-load_button = dbc.Button("Load", id="load-button", className="me-2", size="sm")
-# save buttons
-save_button = dbc.Button("Save", id="save-button", className="me-2", size="sm")
-# help buttons
+# help button
 help_button = dbc.Button("Help", id="help-button", className="me-2", size="sm")
 # edit buttons
 edit_button = dbc.Button("upload", id="upload-button",
                          className="me-2", size="sm")
 
-# parameters buttons
-collapse = html.Div([
-    dbc.Button("Parameters", id="collapse-button",
+# import button
+import_collapse = html.Div([
+    dbc.Button("Import", id="import_collapse_button",
+               className="me-2", n_clicks=0),
+    dbc.Collapse(input_config, id="import_collapse", is_open=False)
+])
+
+# advanced parameters button
+param_collapse = html.Div([
+    dbc.Button("Advanced parameters", id="param_collapse_button",
                className="mb-3", n_clicks=0, size="sm"),
-    dbc.Collapse(input_params, id="collapse", is_open=False)
+    dbc.Collapse(input_params, id="param_collapse", is_open=False)
 ])
 
 
-# Abstract buttons
+# Abstract button
 header_buttons = html.Div(dbc.Row([
     dbc.Col(
-        html.Div(children=[load_button, save_button, edit_button, help_button]), width=4),
-    dbc.Col(html.Div(children=collapse), width=6)
+        html.Div(children=[import_collapse, edit_button, help_button]), width=4),
+    dbc.Col(html.Div(children=param_collapse), width=4)
 ]))
 
 
@@ -212,20 +279,61 @@ my_keyboard = html.Div(Keyboard(id="keyboard"))
 
 # define app layout using dbc container
 app.layout = dbc.Container(
-    html.Div([html.H1("SleeZy v1.0.0"), data_uploader, header_buttons, trace_graphs, lower_row, my_keyboard]), fluid=True)
-
+    html.Div([navbar, header_buttons, trace_graphs, lower_row, my_keyboard]), fluid=True)
 
 # all callBacks
 @app.callback(
-    Output("collapse", "is_open"),
-    [Input("collapse-button", "n_clicks")],
-    [State("collapse", "is_open")],
+    Output("navbar-collapse", "is_open"),
+    [Input("navbar-toggler", "n_clicks")],
+    [State("navbar-collapse", "is_open")],
 )
-def toggle_collapse(n, is_open):
+def toggle_navbar_collapse(n, is_open):
     if n:
         return not is_open
     return is_open
 
+@app.callback(
+    Output("import_collapse", "is_open"),
+    [Input("import_collapse_button", "n_clicks")],
+    [State("import_collapse", "is_open")],
+)
+def toggle_import_collapse(n, is_open):
+    if n:
+        return not is_open
+    return is_open
+
+@app.callback(
+    Output("input-group-dropdown-input", "value"),
+    [
+        Input("dropdown-menu-item-1", "n_clicks"),
+        Input("dropdown-menu-item-2", "n_clicks"),
+        Input("dropdown-menu-item-3", "n_clicks"),
+    ],
+)
+def on_button_click(n1, n2, n3):
+    ctx = dash.callback_context
+
+    if not ctx.triggered:
+        return ""
+    else:
+        button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+
+    if button_id == "dropdown-menu-item-3":
+        return "Enter your customized epoch length"
+    elif button_id == "dropdown-menu-item-1":
+        return "30"
+    else:
+        return "10"
+
+@app.callback(
+    Output("param_collapse", "is_open"),
+    [Input("param_collapse_button", "n_clicks")],
+    [State("param_collapse", "is_open")],
+)
+def toggle_param_collapse(n, is_open):
+    if n:
+        return not is_open
+    return is_open
 
 @app.callback(
     Output("ch", "figure"),
