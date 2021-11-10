@@ -128,7 +128,7 @@ def check_installed_packages():
 
 
 # read large eeg data and chunk it to epochs in the dictionary format
-def process_input_data(path_to_file, start_index, end_index, epoch_len, fr):
+def process_input_data(path_to_file, path_to_save, start_index, end_index, epoch_len, fr, return_result=False):
 
     # Getting the path and loading data using mne.io.read_raw (it automatically
     # detect file ext.)
@@ -187,7 +187,15 @@ def process_input_data(path_to_file, start_index, end_index, epoch_len, fr):
                      "spectrums": spectrums,
                       "data": temp_data.T.tolist()})
 
-    return my_dict
+    # start saving all json files
+    # bakend --> multiprocessing need more memory but saves
+    # 10 times faster than locky backend
+    Parallel(n_jobs=-1, verbose=5,
+             backend="multiprocessing")(delayed(dict_to_json)(path=path_to_save + f"/{i}.json", input_dict=my_dict[i]) for i in range(len(my_dict)))
+
+    # if user ask for return
+    if return_result:
+        return my_dict
 
 
 # write dictionary to json
