@@ -1,4 +1,12 @@
 # All helper functions are written in this file.
+import numpy as np
+from feature_eng import FeatureEng
+import pdb
+import json
+import time
+from json import JSONEncoder
+from joblib import Parallel, delayed
+
 
 def IO():
     """
@@ -116,3 +124,81 @@ def check_installed_packages():
     using this function we are checking if user computer has all required packages
     """
     pass
+
+
+# read large eeg data and chunk it to epochs in the dictionary format
+def process_input_data(path_to_file, start_index, end_index, epoch_len, fr):
+
+    # Getting the path and loading data using mne.io.read_raw (it automatically
+    # detect file ext.)
+    print("reading data")
+    info = IO().read_raw(path_to_file)
+
+    # loading data to memory
+    data = info.get_data().T
+    print("data is loaded!")
+    # pdb.set_trace()
+    # start chunking data
+    data = data[start_index:end_index]
+
+    # get data length after cutting
+    data_len = len(data)
+
+    # get possible number of epochs
+    num_sample_per_epoch = epoch_len * fr
+    num_of_epoch = data_len // num_sample_per_epoch
+
+    if data_len % num_sample_per_epoch:
+        print(
+            f"Possible number of epochs is {num_of_epoch}. Last {data_len - num_of_epoch * num_sample_per_epoch} samples are not used.")
+
+    # start creating list of dictionaries
+    my_dict = []
+
+    # initial info we are feeding in
+    # index = i --> number of epochs
+    # data = n * n_ch --> traces per channel for that epoch
+    # histograms = hist * n_ch --> amplitude histogram per channel
+    # spectrums = spectrum * n_ch --> power spectrum of signals
+    print("Running step 1.")
+    my_dict = [{"data": data[i*num_sample_per_epoch: (i + 1) * num_sample_per_epoch],
+                "index":i} for i in range(num_of_epoch - 1)]
+
+    print("Running step 2.")
+    for dict_ in my_dict:
+
+        # get epoch data
+        temp_data = dict_["data"]
+
+        # prepare hists and spectrums
+        hists = []
+        spectrums = []
+
+        # start loop for channels
+        for i in range(temp_data.shape[1]):
+
+            FE = FeatureEng(data=temp_data[:, i], fs=fr)
+            hists.append(FE.histogram())
+            spectrums.append(FE.power_spec(keep_f=30))
+
+        # load calculation to dictionary
+        dict_.update({"histograms": hists,
+                     "spectrums": spectrums,
+                      "data": temp_data.T.tolist()})
+
+    return my_dict
+
+
+# write dictionary to json
+def dict_to_json(path, input_dict):
+
+    with open(path, "w") as f:
+        json.dump(input_dict, f, cls=NumpyArrayEncoder)
+        time.sleep(.01)
+
+
+class NumpyArrayEncoder(JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return JSONEncoder.default(self, obj)
