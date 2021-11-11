@@ -7,6 +7,7 @@ import time
 from json import JSONEncoder
 from joblib import Parallel, delayed
 import pandas as pd
+from sqlalchemy import create_engine
 
 
 def IO():
@@ -190,6 +191,7 @@ def process_input_data(path_to_file, path_to_save, start_index, end_index, epoch
     # start saving all json files
     # bakend --> multiprocessing need more memory but saves
     # 10 times faster than locky backend
+    print("Running step 3.")
     Parallel(n_jobs=-1, verbose=5,
              backend="multiprocessing")(delayed(dict_to_json)(path=path_to_save + f"/{i}.json", input_dict=my_dict[i]) for i in range(len(my_dict)))
 
@@ -203,3 +205,45 @@ def dict_to_json(path, input_dict):
 
     pd.DataFrame(input_dict).to_json(path)
     time.sleep(.0001)
+
+
+# file converter setion
+class FileConverter:
+
+    def __init__(self, read_path, write_path, file_name):
+        # we can add channels to input parameters to filter wanted channels
+        self.read_path = read_path
+        self.write_path = write_path
+        self.file_name = file_name
+
+    def data_load(self):
+
+        # loading data using read path (we use mne.io to read data)
+        info = IO().read_raw(self.read_path)
+
+        # full dataset as dataframe
+        df = info.to_data_frame(scalings=dict(eeg=1, mag=1, grad=1))
+
+        self.df = df
+
+    def save_df(self, extension):
+
+        df = self.df
+
+        # save df in a given extention
+        if extension.endswith("csv"):
+            df.to_csv(self.write_path + "/" + self.file_name + ".csv")
+
+        if extension.endswith("hdf"):
+            df.to_hdf(self.write_path + "/" + self.file_name + ".hdf")
+
+        if extension.endswith("parquet"):
+            df.to_parquet(self.write_path + "/" + self.file_name + ".parquet")
+
+        if extension.endswith("pickle"):
+            df.to_pickle(self.write_path + "/" + self.file_name + ".pkl")
+
+        if extension.endswith("sql"):
+
+            engine = create_engine('sqlite://', echo=False)
+            df.to_sql(self.file_name, con=engine, if_exists='replace')
