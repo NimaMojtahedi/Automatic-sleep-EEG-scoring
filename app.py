@@ -280,6 +280,9 @@ def get_confusion_mat():
 # The second part describes the interactivity of the application
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SKETCHY])
 
+# storage
+Storage = html.Div(dcc.Store(id='data-header', storage_type='local'))
+
 
 # Graph div
 trace_graphs = html.Div(children=[
@@ -316,7 +319,7 @@ lower_row_right = dbc.Container(dbc.Row([
 
 # lower row
 lower_row = dbc.NavbarSimple(html.Div(children=[
-    dbc.Container(html.H3("Analytics",
+    dbc.Container(html.H3("Analytics", id = "lower-bar",
                           style={"border": "2px solid powderblue", "margin-bottom": "1em", "margin-top": "1em"}), fluid=True),
     dbc.Container(dbc.Row([
         dbc.Col(lower_row_left, width=7),
@@ -333,7 +336,7 @@ my_keyboard = html.Div(Keyboard(id="keyboard"))
 
 # define app layout using dbc container
 app.layout = dbc.Container(
-    html.Div([my_keyboard, navbar, trace_graphs, lower_row]), fluid=True)
+    html.Div([Storage, my_keyboard, navbar, trace_graphs, lower_row]), fluid=True)
 
 # all callBacks
 
@@ -423,15 +426,17 @@ def toggle_offcanvas(n1, is_open):
     return is_open
 
 
-############ at the moment it is not functional ################
+# reading data header ad save to local storage
 @app.callback(
-    Output("train-info", "children"),
+    [Output("data-header", "data"), Output("train-info", "children")],
     Input("load_button", "n_clicks")
 )
 def uiget_path(upload_button):
 
-    # initialize filename
-    filename = "Hasan"
+    # initialize outputs
+    filename = "Vassalllammmmm"
+    data_header = pd.DataFrame()
+
     # check if button is pushed
     print(upload_button)
     if upload_button:
@@ -458,7 +463,20 @@ def uiget_path(upload_button):
 
         """
 
-    return filename
+    return data_header.to_json(), filename
+
+
+# testing reading header from storage
+@app.callback(
+    Output("lower-bar", "children"),
+    [Input("save-button", "n_clicks"), Input("data-header", "data")]
+)
+def testing_storage(clicks, data):
+
+    if clicks:
+        my_data = pd.read_json(data)
+
+        return my_data["channel_names"]
 
 
 # run app if it get called
