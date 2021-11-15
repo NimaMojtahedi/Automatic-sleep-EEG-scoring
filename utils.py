@@ -247,3 +247,18 @@ class FileConverter:
 
             engine = create_engine('sqlite://', echo=False)
             df.to_sql(self.file_name, con=engine, if_exists='replace')
+
+
+def read_data_header(input_path):
+
+    # getting input path read data header
+    info = IO().read_raw(input_path)
+
+    # create dictionary
+    my_dict = {"channel_names": info.info["ch_names"],
+               "s_freq": info.info["sfreq"],
+               "nr_channels": info.info["nchan"],
+               "highpass_filter": info.info["highpass"],
+               "lowpass_filter": info.info["lowpass"]}
+
+    return pd.DataFrame(my_dict)

@@ -7,6 +7,10 @@ from sklearn.metrics import confusion_matrix
 import json
 import pdb
 import os
+import subprocess
+
+# internal files and functions
+from utils import process_input_data
 
 # dash library
 import dash
@@ -267,9 +271,6 @@ def get_confusion_mat():
 # The second part describes the interactivity of the application
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SKETCHY])
 
-# dash uploader
-du.configure_upload(app, os.path.split(os.getcwd())[0] + "/upload_files")
-data_uploader = du.Upload(id='dash-uploader')
 
 # Graph div
 trace_graphs = html.Div(children=[
@@ -297,7 +298,7 @@ hist_graph = dcc.Graph(id="hist-graphs", figure=get_hists(),
 lower_row_left = dbc.Row([
     dbc.Col(table, width=3, align="center"),
     dbc.Col(acc_graph, width=5, align="center"),
-    dbc.Col(dbc.Card("Train Info"), width=4)
+    dbc.Col(dbc.Card("Train Info", id="train_info"), width=4)
 ], style={"display": "flex"})
 
 # lower row right-side
@@ -413,14 +414,35 @@ def keydown(event, n_keydowns):
 
 
 ############ at the moment it is not functional ################
-@du.callback(
-    output=Output('callback-output', 'children'),
-    id='dash-uploader',
+@app.callback(
+    Output("train_info", "children"),
+    Input("upload-button", "n_clicks")
 )
-def get_a_list(filenames):
+def uiget_path(upload_button):
 
-    return html.Ul([html.Li(filenames)])
-#################################################################
+    # check if button is pushed
+    print(upload_button)
+    if upload_button:
+        subprocess.run("python import_path.py", shell=True)
+
+        # start loading file based on input file_path
+        with open("filename.txt", 'r') as file:
+            filename = file.read()
+
+        # create path to save
+        save_path = os.path.join(os.path.split(filename)[0], "temp_save_add")
+        os.makedirs(save_path, exist_ok=True)
+
+        # start processing data
+        process_input_data(path_to_file=filename,
+                           path_to_save=save_path,
+                           start_index=11400,
+                           end_index=2900000,
+                           epoch_len=10,
+                           fr=1000,
+                           return_result=False)
+
+    return filename
 
 
 # run app if it get called
