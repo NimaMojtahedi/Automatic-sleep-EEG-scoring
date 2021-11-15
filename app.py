@@ -10,7 +10,7 @@ import os
 import subprocess
 
 # internal files and functions
-from utils import process_input_data
+from utils import process_input_data, read_data_header
 
 # dash library
 import dash
@@ -43,10 +43,10 @@ input_params = html.Div([
 # config menu items
 config_menu_items = html.Div(
     [
-    dbc.DropdownMenuItem("Human", id="dropdown-menu-item-1"),
-    dbc.DropdownMenuItem("Rodent", id="dropdown-menu-item-2"),
-    dbc.DropdownMenuItem(divider=True),
-    dbc.DropdownMenuItem("Custom", id="dropdown-menu-item-3"),
+        dbc.DropdownMenuItem("Human", id="dropdown-menu-item-1"),
+        dbc.DropdownMenuItem("Rodent", id="dropdown-menu-item-2"),
+        dbc.DropdownMenuItem(divider=True),
+        dbc.DropdownMenuItem("Custom", id="dropdown-menu-item-3"),
     ],
 )
 
@@ -70,65 +70,77 @@ navbar = dbc.NavbarSimple(
     dbc.Container(
         dbc.Row(
             [
-                dbc.Col(html.A(html.Img(src=University_Logo, height="40px"), href="http://www.physiologie2.uni-tuebingen.de/"), width="auto"),
-                dbc.Col(html.H1("Sleeezy", style={'color': '#003D7F', 'fontSize': 45})),
+                dbc.Col(html.A(html.Img(src=University_Logo, height="40px"),
+                        href="http://www.physiologie2.uni-tuebingen.de/"), width="auto"),
+                dbc.Col(html.H1("Sleeezy", style={
+                        'color': '#003D7F', 'fontSize': 45})),
 
 
                 dbc.Col(dbc.DropdownMenu(
-                children=[
-                dbc.DropdownMenuItem("Please specify the below inputs, and then press Load", header=True),
-                dbc.InputGroup([
-                    dbc.DropdownMenu(config_menu_items, label="Species"),
-                       dbc.Input(id="input-group-dropdown-input", placeholder="Epoch length"),
-                dbc.InputGroup([dbc.InputGroupText("Channels to import"), dbc.Input(
-                        placeholder="Number of channels")])
-                ]),
-             
-                dbc.Col(dbc.Button("Load", id="import_collapse_button2", n_clicks=0), width="auto"),
-                
-                ],
-                nav=False,
-                in_navbar=True,
-                label="Import",
-                ), width = "auto",
+                    children=[
+                        dbc.DropdownMenuItem(
+                            "Please specify the below inputs, and then press Load", header=True),
+                        dbc.InputGroup([
+                            dbc.DropdownMenu(
+                                config_menu_items, label="Species"),
+                            dbc.Input(id="input-group-dropdown-input",
+                                      placeholder="Epoch length"),
+                            dbc.InputGroup([dbc.InputGroupText("Channels to import"), dbc.Input(
+                                placeholder="Number of channels")])
+                        ]),
+
+                        dbc.Col(dbc.Button("Load", id="load_button",
+                                n_clicks=0), width="auto"),
+
+                    ],
+                    nav=False,
+                    in_navbar=True,
+                    label="Import",
+                ), width="auto",
                 ),
 
                 dbc.Col(html.Div(
-                 [
-                    dbc.Button("Loading params", id="open-offcanvas", n_clicks=0),
-                    dbc.Offcanvas(
-                    html.P(
-                        "Below are the channels of your dataset. "
-                        "Please select which ones you want to load, "
-                        "and then, press the Load button. "
-                        "This can take a couple of minutes!"
-                    ),
-                    id="offcanvas",
-                    title="Loading...",
-                    is_open=False,
+                    [
+                        dbc.Button("Loading params",
+                                   id="open-offcanvas", n_clicks=0),
+                        dbc.Offcanvas(
+                            html.P(
+                                "Below are the channels of your dataset. "
+                                "Please select which ones you want to load, "
+                                "and then, press the Load button. "
+                                "This can take a couple of minutes!"
+                            ),
+                            id="offcanvas",
+                            title="Loading...",
+                            is_open=False,
                         ),
                     ]
                 ), width="auto"),
 
-                
+
                 #dbc.Col(dbc.Collapse(input_config, id="import_collapse", is_open=False), width="auto"),
                 dbc.Col(dbc.Button("Save", id="save-button"), width="auto"),
                 #dbc.Col(dbc.Button("Edit", id="edit-button"), width="auto"),
-                dbc.Col(dbc.Button("Advanced", id="param_collapse_button", n_clicks=0), width="auto"),
-                dbc.Col(dbc.Collapse(input_params, id="param_collapse", is_open=False), width="auto"),
-                dbc.Col(dbc.Button("About Us", id="about-us-button"), width="auto"),
+                dbc.Col(dbc.Button(
+                    "Advanced", id="param_collapse_button", n_clicks=0), width="auto"),
+                dbc.Col(dbc.Collapse(input_params, id="param_collapse",
+                        is_open=False), width="auto"),
+                dbc.Col(dbc.Button("About Us", id="about-us-button"),
+                        width="auto"),
                 dbc.Col(dbc.Button("Help", id="help-button"), width="auto"),
-                dbc.Col(dbc.NavbarToggler(id="navbar-toggler", n_clicks=0), width="auto"),
-                dbc.Col(dbc.Collapse(dbc.Input(type="search", placeholder="Search"), id="navbar-collapse", is_open=True), width="auto"),
+                dbc.Col(dbc.NavbarToggler(
+                    id="navbar-toggler", n_clicks=0), width="auto"),
+                dbc.Col(dbc.Collapse(dbc.Input(type="search", placeholder="Search"),
+                        id="navbar-collapse", is_open=True), width="auto"),
                 dbc.Col(dbc.Button("Search epoch", n_clicks=0), width="auto")
             ],
-        align="center",
-        justify ="center",
+            align="center",
+            justify="center",
         ),
-    fluid=False,
+        fluid=False,
     ),
-    
-    links_left = True,
+
+    links_left=True,
     sticky="top",
     #class_name="d-flex align-items-evenly",
     color="info",
@@ -294,7 +306,7 @@ hist_graph = dcc.Graph(id="hist-graphs", figure=get_hists(),
 lower_row_left = dbc.Container(dbc.Row([
     dbc.Col(table, width=3, align="center"),
     dbc.Col(acc_graph, width=5, align="center"),
-    dbc.Col(dbc.Card("Train Info"), width=4)
+    dbc.Col(dbc.Card("Train Info", id="train-info"), width=4)
 ], style={"display": "flex"}))
 
 # lower row right-side
@@ -305,14 +317,14 @@ lower_row_right = dbc.Container(dbc.Row([
 # lower row
 lower_row = dbc.NavbarSimple(html.Div(children=[
     dbc.Container(html.H3("Analytics",
-            style={"border": "2px solid powderblue", "margin-bottom": "1em", "margin-top": "1em"}), fluid=True),
+                          style={"border": "2px solid powderblue", "margin-bottom": "1em", "margin-top": "1em"}), fluid=True),
     dbc.Container(dbc.Row([
         dbc.Col(lower_row_left, width=7),
         dbc.Col(lower_row_right, width=5)
     ], class_name="g-5"))
 ]),
     fixed="bottom",
-    )
+)
 
 
 # detecting keyboard keys
@@ -324,6 +336,7 @@ app.layout = dbc.Container(
     html.Div([my_keyboard, navbar, trace_graphs, lower_row]), fluid=True)
 
 # all callBacks
+
 
 @app.callback(
     [Output("ch", "figure"), Output("hist-graphs", "figure")],
@@ -351,6 +364,7 @@ def keydown(event, n_keydowns):
         print(event["key"], n_keydowns)
         return fig_traces, fig_acc
     return plot_traces(index=0), get_hists()
+
 
 @app.callback(
     Output("navbar-collapse", "is_open"),
@@ -386,6 +400,7 @@ def on_button_click(n1, n2, n3):
     else:
         return "10"
 
+
 @app.callback(
     Output("param_collapse", "is_open"),
     [Input("param_collapse_button", "n_clicks")],
@@ -395,6 +410,7 @@ def toggle_param_collapse(n, is_open):
     if n:
         return not is_open
     return is_open
+
 
 @app.callback(
     Output("offcanvas", "is_open"),
@@ -409,11 +425,13 @@ def toggle_offcanvas(n1, is_open):
 
 ############ at the moment it is not functional ################
 @app.callback(
-    Output("train_info", "children"),
-    Input("upload-button", "n_clicks")
+    Output("train-info", "children"),
+    Input("load_button", "n_clicks")
 )
 def uiget_path(upload_button):
 
+    # initialize filename
+    filename = "Hasan"
     # check if button is pushed
     print(upload_button)
     if upload_button:
@@ -428,6 +446,8 @@ def uiget_path(upload_button):
         os.makedirs(save_path, exist_ok=True)
 
         # start processing data
+        data_header = read_data_header(filename)
+        """
         process_input_data(path_to_file=filename,
                            path_to_save=save_path,
                            start_index=11400,
@@ -436,7 +456,10 @@ def uiget_path(upload_button):
                            fr=1000,
                            return_result=False)
 
+        """
+
     return filename
+
 
 # run app if it get called
 if __name__ == '__main__':
