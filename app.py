@@ -6,6 +6,11 @@ import numpy as np
 from sklearn.metrics import confusion_matrix
 import json
 import pdb
+import os
+import subprocess
+
+# internal files and functions
+from utils import process_input_data
 
 # dash library
 import dash
@@ -22,18 +27,6 @@ from dash_extensions import Keyboard
 
 # university logo path
 University_Logo = "https://upload.wikimedia.org/wikipedia/de/9/97/Eberhard_Karls_Universit%C3%A4t_T%C3%BCbingen.svg"
-
-# search bar
-'''search_bar = dbc.Row(
-    [
-        dbc.Col(dbc.Input(type="search", placeholder="Search")),
-        dbc.Col(dbc.Button("Search epoch", color="primary", class_name="ms-2", n_clicks=0),
-            width="auto",
-        ),
-    ],
-    class_name="g-0 ms-auto flex-nowrap mt-3 mt-md-0",
-    align="center",
-)'''
 
 # draft training parameters list
 input_params = html.Div([
@@ -66,16 +59,13 @@ input_config = html.Div([
         placeholder="How many channels do you have?")])
 ])
 
-
 # advanced parameters button
 param_collapse = html.Div([
     dbc.Button("Advanced parameters", id="param_collapse_button", n_clicks=0),
     dbc.Collapse(input_params, id="param_collapse", is_open=False)
 ])
 
-
 # navigation toolbar with logo, software title and a button
-
 navbar = dbc.NavbarSimple(
     dbc.Container(
         dbc.Row(
@@ -150,18 +140,54 @@ navbar = dbc.NavbarSimple(
 def plot_traces(index):
 
     # call trace from inside
-    trace = np.random.rand((1000)) + index
+    trace = np.random.rand((1000)) + index  # still need to fix X axis (time)
+
+    # get trace length
+    trace_len = len(trace)
+
+    # vertical ines positions
+    x0 = trace_len/3
+    x1 = (2 * trace_len) / 3
+
+    y0 = trace.min()
+    y1 = trace.max()
+
+    y0 -= y1 * 0.2
+    y1 += y1 * 0.2
+
     fig = make_subplots(rows=3, cols=1, shared_xaxes=True,
                         print_grid=False, vertical_spacing=0.05)
 
-    fig.add_trace(px.line(y=trace)["data"][0], row=1, col=1)
-    fig.add_trace(px.line(y=trace)["data"][0], row=2, col=1)
-    fig.add_trace(px.line(y=trace)["data"][0], row=3, col=1)
+    # changing px.line(y=trace)["data"][0] to go.Scatter(y=trace, mode="lines")
+    # increase speed by factor of ~5
+    fig.add_trace(go.Scatter(y=trace, mode="lines", line=dict(
+        color='black', width=1)), row=1, col=1)
+    fig.add_trace(go.Scatter(y=trace, mode="lines", line=dict(
+        color='black', width=1)), row=2, col=1)
+    fig.add_trace(go.Scatter(y=trace, mode="lines", line=dict(
+        color='black', width=1)), row=3, col=1)
+
+    # adding lines (alternative is box)
+    split_line1 = go.Scatter(x=[x0, x0], y=[y0, y1], mode="lines",
+                             hovertext="Epoch divider",
+                             line=dict(color='red', width=6, dash='dash'))
+    split_line2 = go.Scatter(x=[x1, x1], y=[y0, y1], mode="lines",
+                             hovertext="Epoch divider",
+                             line=dict(color='red', width=6, dash='dash'))
+
+    fig.add_trace(split_line1, row=1, col=1)
+    fig.add_trace(split_line2, row=1, col=1)
+
+    fig.add_trace(split_line1, row=2, col=1)
+    fig.add_trace(split_line2, row=2, col=1)
+
+    fig.add_trace(split_line1, row=3, col=1)
+    fig.add_trace(split_line2, row=3, col=1)
 
     fig.update_layout(margin=dict(l=100, r=100, t=1, b=1),
                       paper_bgcolor='rgba(0,0,0,0)',
                       plot_bgcolor='rgba(0,0,0,0)',
-                      width=900, height=400,
+                      width=900, height=400, showlegend=False
                       )
     return fig
 
@@ -202,19 +228,25 @@ def get_hists():
                         print_grid=False, vertical_spacing=0.25, horizontal_spacing=0.05,
                         subplot_titles=("Power Spectrums", "", "", "Amplitude Histograms", "", ""))
 
-    fig.add_trace(px.line(y=trace)["data"][0], row=1, col=1)
-    fig.add_trace(px.histogram(x=trace)["data"][0], row=2, col=1)
-    fig.add_trace(px.line(y=trace)["data"][0], row=1, col=2)
-    fig.add_trace(px.histogram(x=trace)["data"][0], row=2, col=2)
-    fig.add_trace(px.line(y=trace)["data"][0], row=1, col=3)
-    fig.add_trace(px.histogram(x=trace)["data"][0], row=2, col=3)
+    fig.add_trace(go.Scatter(y=trace, mode="lines", line=dict(
+        color='black', width=1)), row=1, col=1)
+    fig.add_trace(go.Histogram(x=trace, marker_color='LightSkyBlue',
+                  opacity=0.75, histnorm="probability"), row=2, col=1)
+    fig.add_trace(go.Scatter(y=trace, mode="lines", line=dict(
+        color='black', width=1)), row=1, col=2)
+    fig.add_trace(go.Histogram(x=trace, marker_color='#330C73',
+                  opacity=0.75, histnorm="probability"), row=2, col=2)
+    fig.add_trace(go.Scatter(y=trace, mode="lines", line=dict(
+        color='black', width=1)), row=1, col=3)
+    fig.add_trace(go.Histogram(x=trace, marker_color='#330C73',
+                  opacity=0.75, histnorm="probability"), row=2, col=3)
 
-    #fig.update_yaxes(title_text="Power Spectrums", row=1, col=1)
-    #fig.update_yaxes(title_text="Amplitude Histograms", row=2, col=1)
+    # in case it is necessary for histograms xbins=dict(start=-3.0,end=4,size=0.5)
 
     fig.update_layout(margin=dict(l=1, r=1, t=20, b=1),
                       paper_bgcolor='rgba(0,0,0,0)',
-                      plot_bgcolor='rgba(0,0,0,0)'
+                      plot_bgcolor='rgba(0,0,0,0)', bargap=0.25,
+                      showlegend=False
                       )
 
     return fig
@@ -294,23 +326,31 @@ app.layout = dbc.Container(
 # all callBacks
 
 @app.callback(
-    Output("ch", "figure"),
+    [Output("ch", "figure"), Output("hist-graphs", "figure")],
     [Input("keyboard", "keydown"), Input("keyboard", "n_keydowns")]
 )
 def keydown(event, n_keydowns):
     print(n_keydowns)
     if n_keydowns:
         if event["key"] == "ArrowLeft":
-            fig = plot_traces(index=np.random.randint(0, 10, 1))
+
+            # traces plot
+            fig_traces = plot_traces(index=np.random.randint(0, 10, 1))
+
+            # accuracy plot
+            fig_acc = get_hists()
 
         elif event["key"] == "ArrowRight":
-            fig = plot_traces(index=np.random.randint(0, 10, 1))
+
+            # traces plot
+            fig_traces = plot_traces(index=np.random.randint(0, 10, 1))
+
+            # accuracy plot
+            fig_acc = get_hists()
 
         print(event["key"], n_keydowns)
-        return fig
-    return plot_traces(index=0)
-    
-
+        return fig_traces, fig_acc
+    return plot_traces(index=0), get_hists()
 
 @app.callback(
     Output("navbar-collapse", "is_open"),
@@ -322,15 +362,6 @@ def toggle_navbar_collapse(n, is_open):
         return not is_open
     return is_open
 
-'''@app.callback(
-    Output("import_collapse", "is_open"),
-    [Input("import_collapse_button", "n_clicks")],
-    [State("import_collapse", "is_open")],
-)
-def toggle_import_collapse(n, is_open):
-    if n:
-        return not is_open
-    return is_open'''
 
 @app.callback(
     Output("input-group-dropdown-input", "value"),
@@ -375,6 +406,37 @@ def toggle_offcanvas(n1, is_open):
         return not is_open
     return is_open
 
+
+############ at the moment it is not functional ################
+@app.callback(
+    Output("train_info", "children"),
+    Input("upload-button", "n_clicks")
+)
+def uiget_path(upload_button):
+
+    # check if button is pushed
+    print(upload_button)
+    if upload_button:
+        subprocess.run("python import_path.py", shell=True)
+
+        # start loading file based on input file_path
+        with open("filename.txt", 'r') as file:
+            filename = file.read()
+
+        # create path to save
+        save_path = os.path.join(os.path.split(filename)[0], "temp_save_add")
+        os.makedirs(save_path, exist_ok=True)
+
+        # start processing data
+        process_input_data(path_to_file=filename,
+                           path_to_save=save_path,
+                           start_index=11400,
+                           end_index=2900000,
+                           epoch_len=10,
+                           fr=1000,
+                           return_result=False)
+
+    return filename
 
 # run app if it get called
 if __name__ == '__main__':
