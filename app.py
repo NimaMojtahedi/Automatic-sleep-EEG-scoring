@@ -65,6 +65,16 @@ param_collapse = html.Div([
     dbc.Collapse(input_params, id="param_collapse", is_open=False)
 ])
 
+chnl = []
+channel_name = ["A", "B", "C"]
+for i, ch_name in enumerate(channel_name):
+    chnl.append(dcc.Checklist(
+                    id='chnl {0}'.format(i+1),
+                    options=[{'label': ch_name, 'value': ch_name}],
+                    value=[],
+                    labelStyle={'display': 'block'},
+                    )),
+
 # navigation toolbar with logo, software title and a button
 navbar = dbc.NavbarSimple(
     dbc.Container(
@@ -101,18 +111,24 @@ navbar = dbc.NavbarSimple(
 
                 dbc.Col(html.Div(
                     [
-                        dbc.Button("Loading params",
+                        dbc.Button("Import Data",
                                    id="open-offcanvas", n_clicks=0),
-                        dbc.Offcanvas(
+                        dbc.Offcanvas(children=[
                             html.P(
                                 "Below are the channels of your dataset. "
                                 "Please select which ones you want to load, "
                                 "and then, press the Load button. "
                                 "This can take a couple of minutes!"
-                            ),
+                        ),
+                        
+                        html.Div(chnl),
+    
+                        
+                        ],
                             id="offcanvas",
                             title="Loading...",
                             is_open=False,
+                            class_name ="mt-2"
                         ),
                     ]
                 ), width="auto"),
@@ -181,11 +197,11 @@ def plot_traces(index):
 
     # adding lines (alternative is box)
     split_line1 = go.Scatter(x=[x0, x0], y=[y0, y1], mode="lines",
-                             hovertext="Epoch divider",
-                             line=dict(color='red', width=6, dash='dash'))
+                             hoverinfo='skip',
+                             line=dict(color='#003D7F', width=5, dash='dash'))
     split_line2 = go.Scatter(x=[x1, x1], y=[y0, y1], mode="lines",
-                             hovertext="Epoch divider",
-                             line=dict(color='red', width=6, dash='dash'))
+                             hoverinfo='skip',
+                             line=dict(color='#003D7F', width=5, dash='dash'))
 
     fig.add_trace(split_line1, row=1, col=1)
     fig.add_trace(split_line2, row=1, col=1)
