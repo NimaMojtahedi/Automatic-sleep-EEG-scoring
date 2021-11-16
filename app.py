@@ -69,11 +69,11 @@ chnl = []
 channel_name = ["A", "B", "C"]
 for i, ch_name in enumerate(channel_name):
     chnl.append(dcc.Checklist(
-                    id='chnl {0}'.format(i+1),
-                    options=[{'label': ch_name, 'value': ch_name}],
-                    value=[],
-                    labelStyle={'display': 'block'},
-                    )),
+        id='chnl {0}'.format(i+1),
+        options=[{'label': ch_name, 'value': ch_name}],
+        value=[],
+        labelStyle={'display': 'block'},
+    )),
 
 # navigation toolbar with logo, software title and a button
 navbar = dbc.NavbarSimple(
@@ -82,7 +82,7 @@ navbar = dbc.NavbarSimple(
             [
                 dbc.Col(html.A(html.Img(src=University_Logo, height="40px"),
                         href="http://www.physiologie2.uni-tuebingen.de/"), width="auto"),
-                dbc.Col(html.H1("Sleeezy", style={
+                dbc.Col(html.H1("Sleezy", style={
                         'color': '#003D7F', 'fontSize': 45})),
 
 
@@ -119,16 +119,16 @@ navbar = dbc.NavbarSimple(
                                 "Please select which ones you want to load, "
                                 "and then, press the Load button. "
                                 "This can take a couple of minutes!"
-                        ),
-                        
-                        html.Div(chnl),
-    
-                        
+                            ),
+
+                            html.Div(chnl),
+
+
                         ],
                             id="offcanvas",
                             title="Loading...",
                             is_open=False,
-                            class_name ="mt-2"
+                            class_name="mt-2"
                         ),
                     ]
                 ), width="auto"),
@@ -335,7 +335,7 @@ lower_row_right = dbc.Container(dbc.Row([
 
 # lower row
 lower_row = dbc.NavbarSimple(html.Div(children=[
-    dbc.Container(html.H3("Analytics", id = "lower-bar",
+    dbc.Container(html.H3("Analytics", id="lower-bar",
                           style={"border": "2px solid powderblue", "margin-bottom": "1em", "margin-top": "1em"}), fluid=True),
     dbc.Container(dbc.Row([
         dbc.Col(lower_row_left, width=7),
