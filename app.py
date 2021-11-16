@@ -66,12 +66,15 @@ param_collapse = html.Div([
 ])
 
 chnl = []
-channel_name = ["A", "B", "C"]
+channel_name = ["A", "B", "C", "A", "B", "C", "A", "B", "C", "A", "B", "C", "A", "B", "C", "A", "B", "C",
+                "A", "B", "C", "A", "B", "C", "A", "B", "C", "A", "B", "C", "A", "B", "C", "A", "B", "C", "A", "B", "C", "A", ]
 for i, ch_name in enumerate(channel_name):
-    chnl.append(dcc.Checklist(
+    chnl.append(dbc.Checklist(
         id='chnl {0}'.format(i+1),
         options=[{'label': ch_name, 'value': ch_name}],
         value=[],
+        switch=True,
+        inputStyle={"margin-right": "10px"},
         labelStyle={'display': 'block'},
     )),
 
@@ -86,49 +89,46 @@ navbar = dbc.NavbarSimple(
                         'color': '#003D7F', 'fontSize': 45})),
 
 
-                dbc.Col(dbc.DropdownMenu(
-                    children=[
-                        dbc.DropdownMenuItem(
-                            "Please specify the below inputs, and then press Load", header=True),
-                        dbc.InputGroup([
-                            dbc.DropdownMenu(
-                                config_menu_items, label="Species"),
-                            dbc.Input(id="input-group-dropdown-input",
-                                      placeholder="Epoch length"),
-                            dbc.InputGroup([dbc.InputGroupText("Channels to import"), dbc.Input(
-                                placeholder="Number of channels")])
-                        ]),
-
-                        dbc.Col(dbc.Button("Load", id="load_button",
-                                n_clicks=0), width="auto"),
-
-                    ],
-                    nav=False,
-                    in_navbar=True,
-                    label="Import",
-                ), width="auto",
-                ),
-
                 dbc.Col(html.Div(
                     [
-                        dbc.Button("Import Data",
+                        dbc.Button("Import",
                                    id="open-offcanvas", n_clicks=0),
                         dbc.Offcanvas(children=[
+
                             html.P(
-                                "Below are the channels of your dataset. "
+                                "1) Please customize the epoch length below:"
+                            ),
+                            dbc.InputGroup([
+                                dbc.DropdownMenu(
+                                    config_menu_items, label="Species"),
+                                dbc.Input(id="input-group-dropdown-input",
+                                          placeholder="Epoch length")],
+                                class_name="mb-4"),
+
+                            html.P(
+                                "2) Please specify the sampling frequency:"
+                            ),
+                            dbc.InputGroup([dbc.InputGroupText("Sampling frequency"), dbc.Input(
+                                placeholder="Default value")],
+                                class_name="mb-4"),
+
+                            html.P(
+                                "3) Below are the channels of your dataset. "
                                 "Please select which ones you want to load, "
                                 "and then, press the Load button. "
                                 "This can take a couple of minutes!"
                             ),
 
                             html.Div(chnl),
-
+                            dbc.Row(dbc.Button("Load", id="load_button"),
+                                    class_name="mt-2"),
 
                         ],
                             id="offcanvas",
-                            title="Loading...",
+                            title="Before you load, there are 3 steps...",
                             is_open=False,
-                            class_name="mt-2"
+                            backdrop='static',
+                            scrollable=True
                         ),
                     ]
                 ), width="auto"),
@@ -397,7 +397,11 @@ def toggle_navbar_collapse(n, is_open):
 
 
 @app.callback(
-    Output("input-group-dropdown-input", "value"),
+    [
+        Output("input-group-dropdown-input", "value"),
+        Output("input-group-dropdown-input", "placeholder")
+    ],
+
     [
         Input("dropdown-menu-item-1", "n_clicks"),
         Input("dropdown-menu-item-2", "n_clicks"),
@@ -408,16 +412,18 @@ def on_button_click(n1, n2, n3):
     ctx = dash.callback_context
 
     if not ctx.triggered:
-        return ""
+        return "", "Epoch length"
     else:
         button_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
     if button_id == "dropdown-menu-item-3":
-        return "Enter your customized epoch length"
+        return "", "Enter your customized epoch length"
     elif button_id == "dropdown-menu-item-1":
-        return "30"
+        return "30", ""
+    elif button_id == "dropdown-menu-item-2":
+        return "10", ""
     else:
-        return "10"
+        return "", "Epoch length"
 
 
 @app.callback(
