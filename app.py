@@ -66,12 +66,17 @@ param_collapse = html.Div([
 ])
 
 chnl = []
-channel_name = ["A", "B", "C"]
+channel_name = ["A", "B", "C", "A", "B", "C","A", "B", "C","A", "B", "C","A", "B", "C","A", "B", "C",
+"A", "B", "C","A", "B", "C","A", "B", "C","A", "B", "C","A", "B", "C","A", "B", "C","A", "B", "C","A",
+"B", "C","A", "B", "C","A", "B", "C","A", "B", "C","A", "B", "C","A", "B", "C","A", "B", "C","A", "B",
+"C","A", "B", "C","A", "B", "C","A", "B", "C","A", "B", "C","A", "B", "C","A", "B", "C","A", "B", "C",]
 for i, ch_name in enumerate(channel_name):
-    chnl.append(dcc.Checklist(
+    chnl.append(dbc.Checklist(
                     id='chnl {0}'.format(i+1),
                     options=[{'label': ch_name, 'value': ch_name}],
                     value=[],
+                    switch=True,
+                    inputStyle={"margin-right": "10px"},
                     labelStyle={'display': 'block'},
                     )),
 
@@ -122,13 +127,14 @@ navbar = dbc.NavbarSimple(
                         ),
                         
                         html.Div(chnl),
-    
-                        
+                        dbc.Row(dbc.Button("Edit", id="edit-button"), class_name="mt-2"),
+
                         ],
                             id="offcanvas",
                             title="Loading...",
                             is_open=False,
-                            class_name ="mt-2"
+                            backdrop='static',
+                            scrollable=True
                         ),
                     ]
                 ), width="auto"),
