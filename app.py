@@ -65,18 +65,22 @@ param_collapse = html.Div([
     dbc.Collapse(input_params, id="param_collapse", is_open=False)
 ])
 
-chnl = []
-channel_name = ["A", "B", "C", "A", "B", "C", "A", "B", "C", "A", "B", "C", "A", "B", "C", "A", "B", "C",
-                "A", "B", "C", "A", "B", "C", "A", "B", "C", "A", "B", "C", "A", "B", "C", "A", "B", "C", "A", "B", "C", "A", ]
-for i, ch_name in enumerate(channel_name):
-    chnl.append(dbc.Checklist(
-        id='chnl {0}'.format(i+1),
-        options=[{'label': ch_name, 'value': ch_name}],
-        value=[],
-        switch=True,
-        inputStyle={"margin-right": "10px"},
-        labelStyle={'display': 'block'},
-    )),
+
+# define channels
+def define_channels(channel_name=["No Channel in Data"]):
+
+    chnl = []
+    for i, ch_name in enumerate(channel_name):
+        chnl.append(dbc.Checklist(
+            id=ch_name + "_select",
+            options=[{'label': ch_name, 'value': ch_name}],
+            value=[],
+            switch=True,
+            inputStyle={"margin-right": "10px"},
+            labelStyle={'display': 'block'},
+        ))
+    return chnl
+
 
 # navigation toolbar with logo, software title and a button
 navbar = dbc.NavbarSimple(
@@ -109,7 +113,7 @@ navbar = dbc.NavbarSimple(
                                 "2) Please specify the sampling frequency:"
                             ),
                             dbc.InputGroup([dbc.InputGroupText("Sampling frequency"), dbc.Input(
-                                placeholder="Default value")],
+                                placeholder="Default value", id="sampling_fr_input")],
                                 class_name="mb-4"),
 
                             html.P(
@@ -119,7 +123,7 @@ navbar = dbc.NavbarSimple(
                                 "This can take a couple of minutes!"
                             ),
 
-                            html.Div(chnl),
+                            html.Div(define_channels(), id="channel_def_div"),
                             dbc.Row(dbc.Button("Load", id="load_button"),
                                     class_name="mt-2"),
 
@@ -354,9 +358,12 @@ my_keyboard = html.Div(Keyboard(id="keyboard"))
 app.layout = dbc.Container(
     html.Div([Storage, my_keyboard, navbar, trace_graphs, lower_row]), fluid=True)
 
+
 # all callBacks
 
-
+# keyboard callbakc
+# 1. reading keyboard keys
+# 2. update channel traces anf histogram figures
 @app.callback(
     [Output("ch", "figure"), Output("hist-graphs", "figure")],
     [Input("keyboard", "keydown"), Input("keyboard", "n_keydowns")]
@@ -385,6 +392,7 @@ def keydown(event, n_keydowns):
     return plot_traces(index=0), get_hists()
 
 
+# collapse callback
 @app.callback(
     Output("navbar-collapse", "is_open"),
     [Input("navbar-toggler", "n_clicks")],
@@ -396,6 +404,7 @@ def toggle_navbar_collapse(n, is_open):
     return is_open
 
 
+# Inside import button callbacks
 @app.callback(
     [
         Output("input-group-dropdown-input", "value"),
@@ -426,6 +435,7 @@ def on_button_click(n1, n2, n3):
         return "", "Epoch length"
 
 
+# Parameters collapse
 @app.callback(
     Output("param_collapse", "is_open"),
     [Input("param_collapse_button", "n_clicks")],
@@ -437,18 +447,43 @@ def toggle_param_collapse(n, is_open):
     return is_open
 
 
+# Farzin please name the callback
 @app.callback(
-    Output("offcanvas", "is_open"),
+    [Output("offcanvas", "is_open"),
+     Output("data-header", "data"),
+     Output("sampling_fr_input", "placeholder"),
+     Output("channel_def_div", "children")],
     Input("open-offcanvas", "n_clicks"),
     [State("offcanvas", "is_open")],
 )
 def toggle_offcanvas(n1, is_open):
     if n1:
-        return not is_open
-    return is_open
+        # reading only data header and updating Import button configs
+        subprocess.run("python import_path.py", shell=True)
+
+        # create text file to save input file path
+        with open("filename.txt", 'r') as file:
+            filename = file.read()
+
+        # create path to temporal saves
+        save_path = os.path.join(os.path.split(filename)[0], "temp_save_add")
+        os.makedirs(save_path, exist_ok=True)
+
+        # start reading data header (output of the file is a dataframe)
+        data_header = read_data_header(filename)
+
+        # I need to run the define_channels function
+        channel_children = define_channels(
+            channel_name=data_header["channel_names"])
+
+        # return order to callback Output
+        # button canvas, data_header save, sfreq update, channel name update
+        return (not is_open, data_header.to_json(), data_header["s_freq"], channel_children)
+    return (is_open, "", "Not selected", "No Input Channels")
 
 
-# reading data header ad save to local storage
+"""
+# reading data header and save to local storage
 @app.callback(
     [Output("data-header", "data"), Output("train-info", "children")],
     Input("load_button", "n_clicks")
@@ -474,7 +509,7 @@ def uiget_path(upload_button):
 
         # start processing data
         data_header = read_data_header(filename)
-        """
+        
         process_input_data(path_to_file=filename,
                            path_to_save=save_path,
                            start_index=11400,
@@ -483,7 +518,7 @@ def uiget_path(upload_button):
                            fr=1000,
                            return_result=False)
 
-        """
+        
 
     return data_header.to_json(), filename
 
@@ -500,6 +535,7 @@ def testing_storage(clicks, data):
 
         return my_data["channel_names"]
 
+"""
 
 # run app if it get called
 if __name__ == '__main__':
