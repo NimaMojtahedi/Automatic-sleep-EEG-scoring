@@ -298,7 +298,7 @@ def get_confusion_mat():
 # start tha main app
 # Dash apps are composed of two parts. The first part is the "layout" of the app and it describes what the application looks like.
 # The second part describes the interactivity of the application
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SKETCHY])
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 # storage
 Storage = html.Div(dcc.Store(id='data-header', storage_type='local'))
