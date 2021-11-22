@@ -68,18 +68,21 @@ param_collapse = html.Div([
 
 # define channels
 def define_channels(channel_name=["No Channel in Data"]):
+    
+    options = []
+    for i in channel_name:
+        options.append({'label': i, 'value': i})
+    
+    channels = dbc.Checklist(
+                id="channel_checklist",
+                options=options,
+                value=[],
+                switch=True,
+                inputStyle={"margin-right": "10px"},
+                labelStyle={'display': 'block'},
+    )
+    return channels
 
-    chnl = []
-    for i, ch_name in enumerate(channel_name):
-        chnl.append(dbc.Checklist(
-            id=ch_name + "_select",
-            options=[{'label': ch_name, 'value': ch_name}],
-            value=[],
-            switch=True,
-            inputStyle={"margin-right": "10px"},
-            labelStyle={'display': 'block'},
-        ))
-    return chnl
 
 
 # navigation toolbar with logo, software title and a button
