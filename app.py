@@ -140,10 +140,7 @@ navbar = dbc.NavbarSimple(
                     ]
                 ), width="auto"),
 
-
-                #dbc.Col(dbc.Collapse(input_config, id="import_collapse", is_open=False), width="auto"),
                 dbc.Col(dbc.Button("Save", id="save-button"), width="auto"),
-                #dbc.Col(dbc.Button("Edit", id="edit-button"), width="auto"),
                 dbc.Col(dbc.Button(
                     "Advanced", id="param_collapse_button", n_clicks=0), width="auto"),
                 dbc.Col(dbc.Collapse(input_params, id="param_collapse",
@@ -165,11 +162,65 @@ navbar = dbc.NavbarSimple(
 
     links_left=True,
     sticky="top",
-    #class_name="d-flex align-items-evenly",
     color="info",
     dark=False,
     fluid=False,
 )
+
+inputbar = dbc.Nav(
+        dbc.Container(
+            dbc.Row(
+                    [
+                        dbc.Col(
+                            [
+                                dbc.Input(
+                                    max=3,
+                                    min=1,
+                                    inputmode="numeric",
+                                    type="number",
+                                    id="minus-one_epoch",
+                                    placeholder="",
+                                    disabled =True,
+                                    style={"text-align" : "center"},
+                                ),
+                            ],
+                            width=4,
+                        ),
+                        dbc.Col(
+                            [
+                                dbc.Input(
+                                    max=3,
+                                    min=1,
+                                    inputmode="numeric",
+                                    type="number",
+                                    id="null_epoch",
+                                    placeholder="",
+                                    style={"text-align" : "center"},
+                                ),
+                            ],
+                            width=4,
+                        ),
+                        dbc.Col(
+                            [
+                                dbc.Input(
+                                    max=3,
+                                    min=1,
+                                    inputmode="numeric",
+                                    type="number",
+                                    id="plus-one_epoch",
+                                    placeholder="",
+                                    disabled =True,
+                                    style={"text-align" : "center"},
+                                ),
+                            ],
+                            width=4,
+                        ),
+                    ],
+                    className="g-0",
+                    ),
+                fluid=True),
+        fill=True,
+        )
 
 
 def plot_traces(index):
@@ -315,42 +366,47 @@ trace_graphs = html.Div(children=[
 # lower Row (contains all learning graphs and informations + spectrums and histograms)
 # confusion matrix table
 # creating df which mimics sklearn output
-table = dbc.Table.from_dataframe(
-    get_confusion_mat(), striped=False, bordered=False, hover=True, index=True, responsive=True, size="sm"
-)
+table = dbc.Container(dbc.Col(dbc.Table.from_dataframe(
+    get_confusion_mat(), striped=False, bordered=False, hover=True, index=True, responsive=True, size="md"),
+    style={"width": "20vw", "height": "25vh"})
+    )
 
 # accuracy graph
 acc_graph = dcc.Graph(id="accuracy", figure=get_acc_plot(
-), responsive=True, style={"width": "40vh", "height": "30vh"})
+), responsive=True, style={"width": "20vw", "height": "25vh"})
 
 
 # hist graphs
 hist_graph = dcc.Graph(id="hist-graphs", figure=get_hists(),
-                       responsive=True, style={"width": "90vh", "height": "30vh"})
+                       responsive=True, style={"width": "50vw", "height": "25vh"})
 
 # lower row left-side
 lower_row_left = dbc.Container(dbc.Row([
-    dbc.Col(table, width=3, align="center"),
-    dbc.Col(acc_graph, width=5, align="center"),
-    dbc.Col(dbc.Card("Train Info", id="train-info"), width=4)
-], style={"display": "flex"}))
+    dbc.Col(table),
+    dbc.Col(acc_graph),
+    dbc.Col(dbc.Card("Train Info", id="train-info"))
+], style={"display": "flex"}, class_name="g-4"), fluid=True)
 
 # lower row right-side
 lower_row_right = dbc.Container(dbc.Row([
     hist_graph
-]))
+]), fluid=True)
 
 # lower row
-lower_row = dbc.NavbarSimple(html.Div(children=[
+lower_row = html.Div(dbc.NavbarSimple(html.Div(children=[
     dbc.Container(html.H3("Analytics", id="lower-bar",
-                          style={"border": "2px solid powderblue", "margin-bottom": "1em", "margin-top": "1em"}), fluid=True),
+                          style={"border": "2px solid powderblue", "margin-bottom": "1em", "margin-top": "0em"}),
+                          fluid=True),
     dbc.Container(dbc.Row([
         dbc.Col(lower_row_left, width=7),
         dbc.Col(lower_row_right, width=5)
-    ], class_name="g-5"))
+    ], class_name="g-4"), fluid=True)
 ]),
+    links_left=True,
+    fluid=True,
     fixed="bottom",
-)
+    style={"border": "0px"},
+))
 
 
 # detecting keyboard keys
@@ -359,7 +415,7 @@ my_keyboard = html.Div(Keyboard(id="keyboard"))
 
 # define app layout using dbc container
 app.layout = dbc.Container(
-    html.Div([Storage, my_keyboard, navbar, trace_graphs, lower_row]), fluid=True)
+    html.Div([Storage, my_keyboard, navbar, inputbar, trace_graphs, lower_row]), fluid=True)
 
 
 # all callBacks
@@ -390,6 +446,13 @@ def keydown(event, n_keydowns):
             # accuracy plot
             fig_acc = get_hists()
 
+        elif event["key"] == "1" or event["key"] == "2" or event["key"] == "3":
+
+            # traces plot
+            fig_traces = plot_traces(index=np.random.randint(0, 10, 1))
+
+            # accuracy plot
+            fig_acc = get_hists()
         print(event["key"], n_keydowns)
         return fig_traces, fig_acc
     return plot_traces(index=0), get_hists()
@@ -450,7 +513,15 @@ def toggle_param_collapse(n, is_open):
     return is_open
 
 
-# Farzin please name the callback
+# epoch scorings callback
+@app.callback(
+    [Output("minus-one_epoch", "value"),
+    Output("null_epoch", "value")], 
+    [Input("null_epoch", "value")])
+def output_text(value):
+    return value, ""
+
+# channels loading callback
 @app.callback(
     [Output("offcanvas", "is_open"),
      Output("data-header", "data"),
