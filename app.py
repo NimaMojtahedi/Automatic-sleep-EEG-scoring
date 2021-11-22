@@ -1,6 +1,7 @@
 # Frontend file
 
 # required libraries
+from dash_bootstrap_components._components.InputGroup import InputGroup
 import pandas as pd
 import numpy as np
 from sklearn.metrics import confusion_matrix
@@ -68,21 +69,20 @@ param_collapse = html.Div([
 
 # define channels
 def define_channels(channel_name=["No Channel in Data"]):
-    
+
     options = []
     for i in channel_name:
         options.append({'label': i, 'value': i})
-    
+
     channels = dbc.Checklist(
-                id="channel_checklist",
-                options=options,
-                value=[],
-                switch=True,
-                inputStyle={"margin-right": "10px"},
-                labelStyle={'display': 'block'},
+        id="channel_checklist",
+        options=options,
+        value=[],
+        switch=True,
+        inputStyle={"margin-right": "10px"},
+        labelStyle={'display': 'block'},
     )
     return channels
-
 
 
 # navigation toolbar with logo, software title and a button
@@ -298,6 +298,27 @@ def get_confusion_mat():
     return df
 
 
+# check user input
+def check_user_input(user_input, type):
+
+    try:
+        # Convert it into integer
+        val = int(user_input)
+        if type.lower() == "int":
+            return True
+
+    except ValueError:
+        try:
+            # Convert it into float
+            val = float(user_input)
+            if type.lower() == "float":
+                return True
+
+        except ValueError:
+            if type.lower() == "string":
+                return True
+
+
 # start tha main app
 # Dash apps are composed of two parts. The first part is the "layout" of the app and it describes what the application looks like.
 # The second part describes the interactivity of the application
@@ -390,8 +411,8 @@ def keydown(event, n_keydowns):
             # accuracy plot
             fig_acc = get_hists()
 
-        print(event["key"], n_keydowns)
-        return fig_traces, fig_acc
+            print(event["key"], n_keydowns)
+            return fig_traces, fig_acc
     return plot_traces(index=0), get_hists()
 
 
@@ -407,11 +428,11 @@ def toggle_navbar_collapse(n, is_open):
     return is_open
 
 
-# Inside import button callbacks
+# Inside import button handle epoch length
 @app.callback(
     [
         Output("input-group-dropdown-input", "value"),
-        Output("input-group-dropdown-input", "placeholder")
+        Output("input-group-dropdown-input", "placeholder"),
     ],
 
     [
@@ -421,6 +442,7 @@ def toggle_navbar_collapse(n, is_open):
     ],
 )
 def on_button_click(n1, n2, n3):
+
     ctx = dash.callback_context
 
     if not ctx.triggered:
@@ -450,7 +472,7 @@ def toggle_param_collapse(n, is_open):
     return is_open
 
 
-# Farzin please name the callback
+# Farzin please name the callback (Import button?)
 @app.callback(
     [Output("offcanvas", "is_open"),
      Output("data-header", "data"),
@@ -478,6 +500,12 @@ def toggle_offcanvas(n1, is_open):
         # I need to run the define_channels function
         channel_children = define_channels(
             channel_name=data_header["channel_names"])
+
+        # check if other ids inside Import is triggered
+        ctx = dash.callback_context
+
+        ctx_id = ctx.triggered[0]["prop_id"].split(".")[0]
+        print("ctx", ctx_id)
 
         # return order to callback Output
         # button canvas, data_header save, sfreq update, channel name update
