@@ -208,62 +208,63 @@ navbar = dbc.NavbarSimple(
     color="info",
     dark=False,
     fluid=False,
+    className="mb-3",
 )
 
-inputbar = dbc.Nav(
-    dbc.Container(
-        dbc.Row(
-            [
-                dbc.Col(
+inputbar = dbc.Nav(children=[
+        dbc.Container(
+            dbc.Row(
                     [
-                        dbc.Input(
-                            max=3,
-                            min=1,
-                            inputmode="numeric",
-                            type="number",
-                            id="minus-one_epoch",
-                            placeholder="",
-                            disabled=True,
-                            style={"text-align": "center"},
+                        dbc.Col(
+                            [
+                                dbc.Input(
+                                    max=3,
+                                    min=1,
+                                    inputmode="numeric",
+                                    type="number",
+                                    id="minus-one_epoch",
+                                    placeholder="",
+                                    disabled =True,
+                                    style={'width': '100px', 'text-align' : 'center'},
+                                ),
+                            ],
+                            class_name="d-flex justify-content-center",
                         ),
-                    ],
-                    width=4,
-                ),
-                dbc.Col(
-                    [
-                        dbc.Input(
-                            max=3,
-                            min=1,
-                            inputmode="numeric",
-                            type="number",
-                            id="null_epoch",
-                            placeholder="",
-                            style={"text-align": "center"},
+                        dbc.Col(
+                            [
+                                dbc.Input(
+                                    max=3,
+                                    min=1,
+                                    inputmode="numeric",
+                                    type="number",
+                                    id="null_epoch",
+                                    placeholder="",
+                                    style={'width': '100px', 'text-align' : 'center', 'hoverinfo':'none'},
+                                ),
+                            ],
+                            class_name="d-flex justify-content-center",
                         ),
-                    ],
-                    width=4,
-                ),
-                dbc.Col(
-                    [
-                        dbc.Input(
-                            max=3,
-                            min=1,
-                            inputmode="numeric",
-                            type="number",
-                            id="plus-one_epoch",
-                            placeholder="",
-                            disabled=True,
-                            style={"text-align": "center"},
-                        ),
-                    ],
-                    width=4,
-                ),
-            ],
-            className="g-0",
-        ),
-        fluid=True),
-    fill=True,
-)
+                        dbc.Col(
+                            [
+                                dbc.Input(
+                                    max=3,
+                                    min=1,
+                                    inputmode="numeric",
+                                    type="number",
+                                    id="plus-one_epoch",
+                                    placeholder="",
+                                    disabled =True,
+                                    style={'width': '100px', 'text-align' : 'center'},
+                                ),
+                            ],
+                            class_name="d-flex justify-content-center",
+                            ),
+                    ]),
+                fluid=True,
+                )],
+        fill=True,
+        )
+
 
 
 def plot_traces(traces):
@@ -306,7 +307,7 @@ def plot_traces(traces):
         fig.add_trace(split_line1, row=i+1, col=1)
         fig.add_trace(split_line2, row=i+1, col=1)
 
-    fig.update_layout(margin=dict(l=100, r=100, t=1, b=1),
+    fig.update_layout(margin=dict(l=0, r=0, t=1, b=1),
                       paper_bgcolor='rgba(0,0,0,0)',
                       plot_bgcolor='rgba(0,0,0,0)',
                       width=900, height=400, showlegend=False
@@ -622,12 +623,19 @@ def toggle_param_collapse(n, is_open):
 
 
 # epoch scorings callback
+### NOT FUNCTIONAL FOR NOW
 @app.callback(
     [Output("minus-one_epoch", "value"),
      Output("null_epoch", "value")],
     [Input("null_epoch", "value")])
 def output_text(value):
-    return value, ""
+    print(type(value))
+    if value == 1 or value == 2 or value == 3:
+        value=value
+        return value, ""
+    else:
+        value=value
+        return value, ""
 
 
 # channels loading callback
