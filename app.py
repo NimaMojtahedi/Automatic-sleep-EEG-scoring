@@ -95,14 +95,14 @@ config_menu_items = html.Div(
 input_config = html.Div([
     dbc.InputGroup([
         dbc.DropdownMenu(config_menu_items, label="Species"),
-        dbc.Input(id="input-group-dropdown-input", placeholder="Epoch length")]),
+        dbc.Input(id="epoch-length-input", placeholder="Epoch length")]),
     dbc.InputGroup([dbc.InputGroupText("Channels to import"), dbc.Input(
         placeholder="How many channels do you have?")])
 ])
 
 # advanced parameters button
 param_collapse = html.Div([
-    dbc.Button("Advanced parameters", id="param_collapse_button", n_clicks=0),
+    dbc.Button("Advanced parameters", id="param_collapse_button", size="sm", n_clicks=0),
     dbc.Collapse(input_params, id="param_collapse", is_open=False)
 ])
 
@@ -136,30 +136,27 @@ navbar = dbc.NavbarSimple(
                 dbc.Col(html.A(html.Img(src=University_Logo, height="40px"),
                         href="http://www.physiologie2.uni-tuebingen.de/"), width="auto"),
                 dbc.Col(html.H1("Sleezy", style={
-                        'color': '#003D7F', 'fontSize': 45})),
+                        'color': '#003D7F', 'fontSize': 35})),
 
 
                 dbc.Col(html.Div(
                     [
                         dbc.Button("Import",
-                                   id="open-offcanvas", n_clicks=0),
+                                   id="open-offcanvas", size="sm", n_clicks=0),
                         dbc.Offcanvas(children=[
 
                             html.P(
                                 "1) Please customize the epoch length below:"
                             ),
-                            dbc.InputGroup([
-                                dbc.DropdownMenu(
-                                    config_menu_items, label="Species"),
-                                dbc.Input(id="input-group-dropdown-input",
-                                          placeholder="Epoch length")],
+                            dbc.InputGroup([dbc.InputGroupText("Epoch length"), dbc.Input(
+                                placeholder="in seconds", autocomplete="off", id="epoch-length-input")],
                                 class_name="mb-4"),
-
+                                
                             html.P(
                                 "2) Please specify the sampling frequency:"
                             ),
                             dbc.InputGroup([dbc.InputGroupText("Sampling frequency"), dbc.Input(
-                                placeholder="Default value", id="sampling_fr_input")],
+                                placeholder="in Hz", autocomplete="off", id="sampling_fr_input")],
                                 class_name="mb-4"),
 
                             html.P(
@@ -170,7 +167,7 @@ navbar = dbc.NavbarSimple(
                             ),
 
                             html.Div(define_channels(), id="channel_def_div"),
-                            dbc.Row(dbc.Button("Load", id="load_button"),
+                            dbc.Row(dbc.Button("Load", id="load_button", size="sm"),
                                     class_name="mt-2"),
 
                         ],
@@ -183,19 +180,19 @@ navbar = dbc.NavbarSimple(
                     ]
                 ), width="auto"),
 
-                dbc.Col(dbc.Button("Save", id="save-button"), width="auto"),
+                dbc.Col(dbc.Button("Save", id="save-button", size="sm"), width="auto"),
                 dbc.Col(dbc.Button(
-                    "Advanced", id="param_collapse_button", n_clicks=0), width="auto"),
+                    "Advanced", id="param_collapse_button", size="sm", n_clicks=0), width="auto"),
                 dbc.Col(dbc.Collapse(input_params, id="param_collapse",
                         is_open=False), width="auto"),
-                dbc.Col(dbc.Button("About Us", id="about-us-button"),
+                dbc.Col(dbc.Button("About Us", id="about-us-button", size="sm"),
                         width="auto"),
-                dbc.Col(dbc.Button("Help", id="help-button"), width="auto"),
+                dbc.Col(dbc.Button("Help", id="help-button", size="sm"), width="auto"),
                 dbc.Col(dbc.NavbarToggler(
                     id="navbar-toggler", n_clicks=0), width="auto"),
-                dbc.Col(dbc.Collapse(dbc.Input(type="search", placeholder="Search"),
+                dbc.Col(dbc.Collapse(dbc.Input(type="search", placeholder="Search", size="sm"),
                         id="navbar-collapse", is_open=True), width="auto"),
-                dbc.Col(dbc.Button("Search epoch", n_clicks=0), width="auto")
+                dbc.Col(dbc.Button("Search epoch", size="sm", n_clicks=0, color="dark"), width="auto")
             ],
             align="center",
             justify="center",
@@ -236,9 +233,10 @@ inputbar = dbc.Nav(children=[
                                     max=3,
                                     min=1,
                                     inputmode="numeric",
-                                    type="number",
+                                    #type="number",
                                     id="null_epoch",
                                     placeholder="",
+                                    autocomplete="off",
                                     style={'width': '100px', 'text-align' : 'center', 'hoverinfo':'none'},
                                 ),
                             ],
@@ -410,7 +408,7 @@ def check_user_input(user_input, type):
 # start tha main app
 # Dash apps are composed of two parts. The first part is the "layout" of the app and it describes what the application looks like.
 # The second part describes the interactivity of the application
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SPACELAB])
 
 # storage
 Storage = html.Div(dcc.Store(id='storage_add', storage_type='local'))
@@ -452,13 +450,15 @@ lower_row_right = dbc.Container(dbc.Row([
 
 # lower row
 lower_row = html.Div(dbc.NavbarSimple(html.Div(children=[
-    dbc.Container(html.H3("Analytics", id="lower-bar",
-                          style={"border": "2px solid powderblue", "margin-bottom": "1em", "margin-top": "0em"}),
-                  fluid=True),
+    dbc.Container(children=[html.H4("Analytics", id="lower-bar",
+                          style={"font-weight":"600","padding-top": "10px"}),
+                          html.Br()],
+                  fluid=True,
+                  style={"border": "3px solid #308fe3", "backgroundColor": "#8ac6fb"}),
     dbc.Container(dbc.Row([
         dbc.Col(lower_row_left, width=7),
         dbc.Col(lower_row_right, width=5)
-    ], class_name="g-4"), fluid=True)
+    ], class_name="g-4"), fluid=True, style={"backgroundColor": "#Cee7ff"})
 ]),
     links_left=True,
     fluid=True,
@@ -565,49 +565,16 @@ def toggle_navbar_collapse(n, is_open):
     return is_open
 
 
-# Inside import button handle epoch length
-@app.callback(
-    [
-        Output("input-group-dropdown-input", "value"),
-        Output("input-group-dropdown-input", "placeholder"),
-        Output("user-epoch-length", "data")
-    ],
 
-    [
-        Input("dropdown-menu-item-1", "n_clicks"),
-        Input("dropdown-menu-item-2", "n_clicks"),
-        Input("dropdown-menu-item-3", "n_clicks"),
-    ],
-)
-def on_button_click(n1, n2, n3):
-
-    ctx = dash.callback_context
-
-    if not ctx.triggered:
-        return 10, "Epoch length", 10  # having default value of epoch length
-    else:
-        button_id = ctx.triggered[0]["prop_id"].split(".")[0]
-
-        if button_id == "dropdown-menu-item-3":  # this part should change
-            return "", "Enter your customized epoch length", None
-
-        elif button_id == "dropdown-menu-item-1":
-            return "30", "", 30
-
-        elif button_id == "dropdown-menu-item-2":
-            return "10", "", 10
-
-
-"""
-This part has to merge to above callback after fixing issue
+#This part has to merge to above callback after fixing issue
 # reading user input for epoch len (custom value)
 @app.callback(
     Output("user-epoch-length", "data"),
-    Input("input-group-dropdown-input", "value")
+    Input("epoch-length-input", "value")
 )
 def user_custom_epoch_length(value):
     return value
-"""
+
 
 
 # Parameters collapse
@@ -719,7 +686,7 @@ def action_load_button(n, filename, save_path, epoch_len, sample_fr, channel_lis
                            channel_list=json.loads(channel_list),
                            return_result=False)
         print("Finished data loading")
-        return "Loaded"
+        return [dbc.Spinner(size="sm"), " Loading..."]
     else:
         return "Load"
 
