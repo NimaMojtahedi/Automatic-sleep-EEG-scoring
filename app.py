@@ -29,6 +29,46 @@ from dash_extensions import Keyboard
 # university logo path
 University_Logo = "https://upload.wikimedia.org/wikipedia/de/9/97/Eberhard_Karls_Universit%C3%A4t_T%C3%BCbingen.svg"
 
+##### Data and parameters storage #####
+# data header uploader & downloader
+
+
+def data_uploader(data, path):
+
+    if isinstance(data, pd.DataFrame):
+        data.to_json(path)
+    else:
+        data = pd.DataFrame(data)
+        data.to_json(path)
+        print("data first converted to pandas dataframe before save")
+
+
+def data_downloader(path):
+
+    return pd.read_json(path)
+
+
+# create dcc store list
+all_storage = html.Div([dcc.Store(id="epoch-index"),  # get input from keyboard callback
+                        # both below ids are getting updated in toggle_offcanvas
+                        dcc.Store(id="input-file-loc"),
+                        dcc.Store(id="save-path"),
+                        # get input from on_button_click callback
+                        dcc.Store(id="user-epoch-length"),
+                        dcc.Store(id="user-sampling-frequency"),
+                        dcc.Store(id="user-selected-channels"),
+                        # getting updated in toggle_offcanvas
+                        dcc.Store(id="input-file-default-info"),
+                        dcc.Store(id="monitor-info"),
+                        # get input from keyboard callback
+                        dcc.Store(id="user-pressed-key"),
+                        dcc.Store(id="max-possible-epochs"),
+                        dcc.Store(id="res10"),
+                        dcc.Store(id="res11"),
+                        dcc.Store(id="res12")])
+#####       #####       #####       #####       #####
+
+
 # draft training parameters list
 input_params = html.Div([
     dbc.InputGroup([dbc.InputGroupText("ML algorithm"), dbc.Input(
@@ -71,6 +111,9 @@ param_collapse = html.Div([
 def define_channels(channel_name=["No Channel in Data"]):
 
     options = []
+    if isinstance(channel_name[0], list):
+        channel_name = channel_name[0]
+
     for i in channel_name:
         options.append({'label': i, 'value': i})
 
@@ -140,10 +183,7 @@ navbar = dbc.NavbarSimple(
                     ]
                 ), width="auto"),
 
-
-                #dbc.Col(dbc.Collapse(input_config, id="import_collapse", is_open=False), width="auto"),
                 dbc.Col(dbc.Button("Save", id="save-button"), width="auto"),
-                #dbc.Col(dbc.Button("Edit", id="edit-button"), width="auto"),
                 dbc.Col(dbc.Button(
                     "Advanced", id="param_collapse_button", n_clicks=0), width="auto"),
                 dbc.Col(dbc.Collapse(input_params, id="param_collapse",
@@ -165,59 +205,106 @@ navbar = dbc.NavbarSimple(
 
     links_left=True,
     sticky="top",
-    #class_name="d-flex align-items-evenly",
     color="info",
     dark=False,
     fluid=False,
 )
 
+inputbar = dbc.Nav(
+    dbc.Container(
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        dbc.Input(
+                            max=3,
+                            min=1,
+                            inputmode="numeric",
+                            type="number",
+                            id="minus-one_epoch",
+                            placeholder="",
+                            disabled=True,
+                            style={"text-align": "center"},
+                        ),
+                    ],
+                    width=4,
+                ),
+                dbc.Col(
+                    [
+                        dbc.Input(
+                            max=3,
+                            min=1,
+                            inputmode="numeric",
+                            type="number",
+                            id="null_epoch",
+                            placeholder="",
+                            style={"text-align": "center"},
+                        ),
+                    ],
+                    width=4,
+                ),
+                dbc.Col(
+                    [
+                        dbc.Input(
+                            max=3,
+                            min=1,
+                            inputmode="numeric",
+                            type="number",
+                            id="plus-one_epoch",
+                            placeholder="",
+                            disabled=True,
+                            style={"text-align": "center"},
+                        ),
+                    ],
+                    width=4,
+                ),
+            ],
+            className="g-0",
+        ),
+        fluid=True),
+    fill=True,
+)
 
-def plot_traces(index):
 
-    # call trace from inside
-    trace = np.random.rand((1000)) + index  # still need to fix X axis (time)
+def plot_traces(traces):
 
+    # traces --> n * p array
     # get trace length
-    trace_len = len(trace)
+    trace_len = len(traces[:, 0])
+
+    # number of channels
+    nr_ch = traces.shape[1]
 
     # vertical ines positions
     x0 = trace_len/3
     x1 = (2 * trace_len) / 3
 
-    y0 = trace.min()
-    y1 = trace.max()
+    y0 = []
+    y1 = []
+    y0 = [traces[:, i].min() for i in range(nr_ch)]
+    y1 = [traces[:, i].max() for i in range(nr_ch)]
 
-    y0 -= y1 * 0.2
-    y1 += y1 * 0.2
-
-    fig = make_subplots(rows=3, cols=1, shared_xaxes=True,
+    fig = make_subplots(rows=nr_ch, cols=1, shared_xaxes=True,
                         print_grid=False, vertical_spacing=0.05)
 
     # changing px.line(y=trace)["data"][0] to go.Scatter(y=trace, mode="lines")
     # increase speed by factor of ~5
-    fig.add_trace(go.Scatter(y=trace, mode="lines", line=dict(
-        color='black', width=1)), row=1, col=1)
-    fig.add_trace(go.Scatter(y=trace, mode="lines", line=dict(
-        color='black', width=1)), row=2, col=1)
-    fig.add_trace(go.Scatter(y=trace, mode="lines", line=dict(
-        color='black', width=1)), row=3, col=1)
+    for i in range(nr_ch):
+        fig.add_trace(go.Scatter(y=traces[:, i], mode="lines", line=dict(
+            color='black', width=1)), row=i+1, col=1)
 
-    # adding lines (alternative is box)
-    split_line1 = go.Scatter(x=[x0, x0], y=[y0, y1], mode="lines",
-                             hoverinfo='skip',
-                             line=dict(color='#003D7F', width=5, dash='dash'))
-    split_line2 = go.Scatter(x=[x1, x1], y=[y0, y1], mode="lines",
-                             hoverinfo='skip',
-                             line=dict(color='#003D7F', width=5, dash='dash'))
+    for i in range(nr_ch):
 
-    fig.add_trace(split_line1, row=1, col=1)
-    fig.add_trace(split_line2, row=1, col=1)
+        # adding lines (alternative is box)
+        split_line1 = go.Scatter(x=[x0, x0], y=[y0[i], y1[i]], mode="lines",
+                                 hoverinfo='skip',
+                                 line=dict(color='#003D7F', width=5, dash='dash'))
+        split_line2 = go.Scatter(x=[x1, x1], y=[y0[i], y1[i]], mode="lines",
+                                 hoverinfo='skip',
+                                 line=dict(color='#003D7F', width=5, dash='dash'))
 
-    fig.add_trace(split_line1, row=2, col=1)
-    fig.add_trace(split_line2, row=2, col=1)
-
-    fig.add_trace(split_line1, row=3, col=1)
-    fig.add_trace(split_line2, row=3, col=1)
+        fig.add_trace(split_line1, row=i+1, col=1)
+        fig.add_trace(split_line2, row=i+1, col=1)
 
     fig.update_layout(margin=dict(l=100, r=100, t=1, b=1),
                       paper_bgcolor='rgba(0,0,0,0)',
@@ -322,10 +409,10 @@ def check_user_input(user_input, type):
 # start tha main app
 # Dash apps are composed of two parts. The first part is the "layout" of the app and it describes what the application looks like.
 # The second part describes the interactivity of the application
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
 
 # storage
-Storage = html.Div(dcc.Store(id='data-header', storage_type='local'))
+Storage = html.Div(dcc.Store(id='storage_add', storage_type='local'))
 
 
 # Graph div
@@ -336,42 +423,47 @@ trace_graphs = html.Div(children=[
 # lower Row (contains all learning graphs and informations + spectrums and histograms)
 # confusion matrix table
 # creating df which mimics sklearn output
-table = dbc.Table.from_dataframe(
-    get_confusion_mat(), striped=False, bordered=False, hover=True, index=True, responsive=True, size="sm"
+table = dbc.Container(dbc.Col(dbc.Table.from_dataframe(
+    get_confusion_mat(), striped=False, bordered=False, hover=True, index=True, responsive=True, size="md"),
+    style={"width": "20vw", "height": "25vh"})
 )
 
 # accuracy graph
 acc_graph = dcc.Graph(id="accuracy", figure=get_acc_plot(
-), responsive=True, style={"width": "40vh", "height": "30vh"})
+), responsive=True, style={"width": "20vw", "height": "25vh"})
 
 
 # hist graphs
 hist_graph = dcc.Graph(id="hist-graphs", figure=get_hists(),
-                       responsive=True, style={"width": "90vh", "height": "30vh"})
+                       responsive=True, style={"width": "50vw", "height": "25vh"})
 
 # lower row left-side
 lower_row_left = dbc.Container(dbc.Row([
-    dbc.Col(table, width=3, align="center"),
-    dbc.Col(acc_graph, width=5, align="center"),
-    dbc.Col(dbc.Card("Train Info", id="train-info"), width=4)
-], style={"display": "flex"}))
+    dbc.Col(table),
+    dbc.Col(acc_graph),
+    dbc.Col(dbc.Card("Train Info", id="train-info"))
+], style={"display": "flex"}, class_name="g-4"), fluid=True)
 
 # lower row right-side
 lower_row_right = dbc.Container(dbc.Row([
     hist_graph
-]))
+]), fluid=True)
 
 # lower row
-lower_row = dbc.NavbarSimple(html.Div(children=[
+lower_row = html.Div(dbc.NavbarSimple(html.Div(children=[
     dbc.Container(html.H3("Analytics", id="lower-bar",
-                          style={"border": "2px solid powderblue", "margin-bottom": "1em", "margin-top": "1em"}), fluid=True),
+                          style={"border": "2px solid powderblue", "margin-bottom": "1em", "margin-top": "0em"}),
+                  fluid=True),
     dbc.Container(dbc.Row([
         dbc.Col(lower_row_left, width=7),
         dbc.Col(lower_row_right, width=5)
-    ], class_name="g-5"))
+    ], class_name="g-4"), fluid=True)
 ]),
+    links_left=True,
+    fluid=True,
     fixed="bottom",
-)
+    style={"border": "0px"},
+))
 
 
 # detecting keyboard keys
@@ -380,40 +472,84 @@ my_keyboard = html.Div(Keyboard(id="keyboard"))
 
 # define app layout using dbc container
 app.layout = dbc.Container(
-    html.Div([Storage, my_keyboard, navbar, trace_graphs, lower_row]), fluid=True)
+    html.Div([all_storage, my_keyboard, navbar, inputbar, trace_graphs, lower_row]), fluid=True)
 
 
 # all callBacks
 
-# keyboard callbakc
-# 1. reading keyboard keys
-# 2. update channel traces anf histogram figures
+# keyboard callback
+# 1. reading keyboard keys / epoch-index / max number of possible epoch
+# 2. update epoch-index / user pressed key. Both in Storage
 @app.callback(
-    [Output("ch", "figure"), Output("hist-graphs", "figure")],
-    [Input("keyboard", "keydown"), Input("keyboard", "n_keydowns")]
+    [Output("epoch-index", "data"),
+     Output("user-pressed-key", "data"),
+     Output("ch", "figure")],
+
+    [Input("keyboard", "keydown"),
+     Input("keyboard", "n_keydowns"),
+     Input("epoch-index", 'data'),
+     Input("max-possible-epochs", "data"),
+     Input("save-path", "data")]
 )
-def keydown(event, n_keydowns):
-    print(n_keydowns)
+def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path):
     if n_keydowns:
-        if event["key"] == "ArrowLeft":
+        print(event)
+        # change input types
+        epoch_index = int(epoch_index)
+        max_nr_epochs = 10000  # temp
 
-            # traces plot
-            fig_traces = plot_traces(index=np.random.randint(0, 10, 1))
+        # check what is user pressed key
+        if (event["key"] == "ArrowRight") and (not save_path is None):
+            if epoch_index < max_nr_epochs:
+                # read data batch from disk / check if save_path exist
+                data_mid = pd.read_json(os.path.join(
+                    save_path, str(epoch_index) + ".json"))
+                data_right = pd.read_json(os.path.join(
+                    save_path, str(epoch_index + 1) + ".json"))
 
-            # accuracy plot
-            fig_acc = get_hists()
+                # combine mid_right datasets
+                full_trace = np.hstack(
+                    [np.stack(data_mid["data"]), np.stack(data_right["data"])])
 
-        elif event["key"] == "ArrowRight":
+                # fix right epoch situtation
+                if epoch_index > 0:
+                    data_left = pd.read_json(os.path.join(
+                        save_path, str(epoch_index - 1) + ".json"))
+                    data_left = np.stack(data_left["data"])
+                else:
+                    data_left = np.zeros_like(np.stack(data_mid["data"]))
 
-            # traces plot
-            fig_traces = plot_traces(index=np.random.randint(0, 10, 1))
+                # refresh full trace
+                full_trace = np.hstack([data_left, full_trace])
 
-            # accuracy plot
-            fig_acc = get_hists()
+                # call for plot functions
+                fig_traces = plot_traces(full_trace.T)
 
-            print(event["key"], n_keydowns)
-            return fig_traces, fig_acc
-    return plot_traces(index=0), get_hists()
+                epoch_index += 1
+
+                return epoch_index, event, fig_traces
+
+        elif (event["key"] == "ArrowLeft") and (not save_path is None):
+            if epoch_index > 0:
+                epoch_index -= 1
+
+            # return epoch_index, event, fig_traces
+    elif (not n_keydowns) and (not save_path is None):
+        # read data batch from disk / check if save_path exist
+        data_mid = pd.read_json(os.path.join(
+            save_path, str(0) + ".json"))
+        data_right = pd.read_json(os.path.join(
+            save_path, str(1) + ".json"))
+
+        # combine mid_right datasets
+        full_trace = np.hstack(
+            [np.zeros_like(np.stack(data_mid["data"])),
+             np.stack(data_mid["data"]),
+             np.stack(data_right["data"])])
+        fig_traces = plot_traces(full_trace.T)
+        return json.dumps(0), None, fig_traces
+
+    return json.dumps(0), None, plot_traces(np.zeros((1000, 2)))
 
 
 # collapse callback
@@ -433,6 +569,7 @@ def toggle_navbar_collapse(n, is_open):
     [
         Output("input-group-dropdown-input", "value"),
         Output("input-group-dropdown-input", "placeholder"),
+        Output("user-epoch-length", "data")
     ],
 
     [
@@ -446,18 +583,30 @@ def on_button_click(n1, n2, n3):
     ctx = dash.callback_context
 
     if not ctx.triggered:
-        return "", "Epoch length"
+        return 10, "Epoch length", 10  # having default value of epoch length
     else:
         button_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
-    if button_id == "dropdown-menu-item-3":
-        return "", "Enter your customized epoch length"
-    elif button_id == "dropdown-menu-item-1":
-        return "30", ""
-    elif button_id == "dropdown-menu-item-2":
-        return "10", ""
-    else:
-        return "", "Epoch length"
+        if button_id == "dropdown-menu-item-3":  # this part should change
+            return "", "Enter your customized epoch length", None
+
+        elif button_id == "dropdown-menu-item-1":
+            return "30", "", 30
+
+        elif button_id == "dropdown-menu-item-2":
+            return "10", "", 10
+
+
+"""
+This part has to merge to above callback after fixing issue
+# reading user input for epoch len (custom value)
+@app.callback(
+    Output("user-epoch-length", "data"),
+    Input("input-group-dropdown-input", "value")
+)
+def user_custom_epoch_length(value):
+    return value
+"""
 
 
 # Parameters collapse
@@ -472,13 +621,25 @@ def toggle_param_collapse(n, is_open):
     return is_open
 
 
-# Farzin please name the callback (Import button?)
+# epoch scorings callback
+@app.callback(
+    [Output("minus-one_epoch", "value"),
+     Output("null_epoch", "value")],
+    [Input("null_epoch", "value")])
+def output_text(value):
+    return value, ""
+
+
+# channels loading callback
 @app.callback(
     [Output("offcanvas", "is_open"),
-     Output("data-header", "data"),
-     Output("sampling_fr_input", "placeholder"),
-     Output("channel_def_div", "children")],
+     Output("input-file-loc", "data"),
+     Output("save-path", "data"),
+     Output("channel_def_div", "children"),
+     Output("input-file-default-info", "data")],
+
     Input("open-offcanvas", "n_clicks"),
+
     [State("offcanvas", "is_open")],
 )
 def toggle_offcanvas(n1, is_open):
@@ -486,7 +647,7 @@ def toggle_offcanvas(n1, is_open):
         # reading only data header and updating Import button configs
         subprocess.run("python import_path.py", shell=True)
 
-        # create text file to save input file path
+        # read input path from text file already generated
         with open("filename.txt", 'r') as file:
             filename = file.read()
 
@@ -501,72 +662,59 @@ def toggle_offcanvas(n1, is_open):
         channel_children = define_channels(
             channel_name=data_header["channel_names"])
 
-        # check if other ids inside Import is triggered
-        ctx = dash.callback_context
+        # save header file to disk
+        data_uploader(data=data_header,
+                      path=os.path.join(save_path, "header_data.json"))
 
-        ctx_id = ctx.triggered[0]["prop_id"].split(".")[0]
-        print("ctx", ctx_id)
-
-        # return order to callback Output
-        # button canvas, data_header save, sfreq update, channel name update
-        return (not is_open, data_header.to_json(), data_header["s_freq"], channel_children)
-    return (is_open, "", "Not selected", "No Input Channels")
+        # button canvas, input-data-path, save-path, channel name, save-data-header
+        return not is_open, filename, save_path, channel_children, data_header.to_json()
+    return is_open, None, None, "No Input Channels", None
 
 
-"""
-# reading data header and save to local storage
 @app.callback(
-    [Output("data-header", "data"), Output("train-info", "children")],
-    Input("load_button", "n_clicks")
+    Output("user-sampling-frequency", "data"),
+
+    Input("sampling_fr_input", "value"),
 )
-def uiget_path(upload_button):
+def handle_sample_fr_input(value):
+    return value
 
-    # initialize outputs
-    filename = "Vassalllammmmm"
-    data_header = pd.DataFrame()
 
-    # check if button is pushed
-    print(upload_button)
-    if upload_button:
-        subprocess.run("python import_path.py", shell=True)
+@app.callback(
+    Output("user-selected-channels", "data"),
+    Input("channel_checklist", "value")
+)
+def get_channel_user_selection(channels):
+    return json.dumps(channels)
 
-        # start loading file based on input file_path
-        with open("filename.txt", 'r') as file:
-            filename = file.read()
 
-        # create path to save
-        save_path = os.path.join(os.path.split(filename)[0], "temp_save_add")
-        os.makedirs(save_path, exist_ok=True)
+@app.callback(
+    Output("load_button", "children"),
+    [Input("load_button", "n_clicks"),
+     Input("input-file-loc", "data"),
+     Input("save-path", "data"),
+     Input("user-epoch-length", "data"),
+     Input("user-sampling-frequency", "data"),
+     Input("user-selected-channels", "data")]
+)
+def action_load_button(n, filename, save_path, epoch_len, sample_fr, channel_list):
 
-        # start processing data
-        data_header = read_data_header(filename)
-        
+    if n:
+        print(
+            f"\n\nfilename: {filename} \nsavepath: {save_path} \nepoch_len:{epoch_len} \nsampling_fr:{sample_fr} \n\n")
         process_input_data(path_to_file=filename,
                            path_to_save=save_path,
-                           start_index=11400,
-                           end_index=2900000,
-                           epoch_len=10,
-                           fr=1000,
+                           start_index=0,
+                           end_index=-1,
+                           epoch_len=int(epoch_len),
+                           fr=int(sample_fr),
+                           channel_list=json.loads(channel_list),
                            return_result=False)
+        print("Finished data loading")
+        return "Loaded"
+    else:
+        return "Load"
 
-        
-
-    return data_header.to_json(), filename
-
-
-# testing reading header from storage
-@app.callback(
-    Output("lower-bar", "children"),
-    [Input("save-button", "n_clicks"), Input("data-header", "data")]
-)
-def testing_storage(clicks, data):
-
-    if clicks:
-        my_data = pd.read_json(data)
-
-        return my_data["channel_names"]
-
-"""
 
 # run app if it get called
 if __name__ == '__main__':

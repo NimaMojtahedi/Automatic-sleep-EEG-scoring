@@ -129,7 +129,7 @@ def check_installed_packages():
 
 
 # read large eeg data and chunk it to epochs in the dictionary format
-def process_input_data(path_to_file, path_to_save, start_index, end_index, epoch_len, fr, return_result=False):
+def process_input_data(path_to_file, path_to_save, start_index, end_index, epoch_len, fr, channel_list, return_result=False):
 
     # Getting the path and loading data using mne.io.read_raw (it automatically
     # detect file ext.)
@@ -137,9 +137,15 @@ def process_input_data(path_to_file, path_to_save, start_index, end_index, epoch
     info = IO().read_raw(path_to_file)
 
     # loading data to memory
-    data = info.get_data().T
-    print("data is loaded!")
-    # pdb.set_trace()
+    if channel_list:
+        data = info.pick_channels(channel_list).get_data().T
+        print("\n\nProcessing data with provided channel list")
+    else:
+        data = info.get_data().T
+        print("\n\nProcessing data with all channels")
+
+    print("\n\nData is loaded! \n\nStart processing")
+
     # start chunking data
     data = data[start_index:end_index]
 
@@ -255,7 +261,7 @@ def read_data_header(input_path):
     info = IO().read_raw(input_path)
 
     # create dictionary
-    my_dict = {"channel_names": info.info["ch_names"],
+    my_dict = {"channel_names": [info.info["ch_names"]],
                "s_freq": info.info["sfreq"],
                "nr_channels": info.info["nchan"],
                "highpass_filter": info.info["highpass"],
