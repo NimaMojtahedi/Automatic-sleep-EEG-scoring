@@ -177,7 +177,7 @@ navbar = dbc.NavbarSimple(
                             is_open=False,
                             backdrop='static',
                             scrollable=True,
-                            style={'background': 'rgba(255, 255, 255, 0.5)', 'backdrop-filter': 'blur(10px)'}
+                            style={'background': 'rgba(255, 255, 255, 0.15)', 'backdrop-filter': 'blur(10px)'}
                         ),
                     ]
                 ), width="auto"),
