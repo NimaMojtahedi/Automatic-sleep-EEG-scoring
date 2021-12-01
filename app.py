@@ -176,7 +176,8 @@ navbar = dbc.NavbarSimple(
                             title="Before you load, there are 3 steps...",
                             is_open=False,
                             backdrop='static',
-                            scrollable=True
+                            scrollable=True,
+                            style={'background': 'rgba(255, 255, 255, 0.5)', 'backdrop-filter': 'blur(10px)'}
                         ),
                     ]
                 ), width="auto"),
