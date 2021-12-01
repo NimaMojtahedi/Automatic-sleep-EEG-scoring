@@ -212,10 +212,10 @@ navbar = dbc.NavbarSimple(
 )
 
 inputbar = dbc.Nav(children=[
-        dbc.Container(
-            dbc.Row(
-                    [
-                        dbc.Col(
+    dbc.Container(
+        dbc.Row(
+            [
+                dbc.Col(
                             [
                                 dbc.Input(
                                     max=3,
@@ -224,47 +224,49 @@ inputbar = dbc.Nav(children=[
                                     type="number",
                                     id="minus-one_epoch",
                                     placeholder="",
-                                    disabled =True,
-                                    style={'width': '100px', 'text-align' : 'center'},
+                                    disabled=True,
+                                    style={'width': '100px',
+                                           'text-align': 'center'},
                                 ),
                             ],
-                            class_name="d-flex justify-content-center",
+                    class_name="d-flex justify-content-center",
+                ),
+                dbc.Col(
+                    [
+                        dbc.Input(
+                            max=3,
+                            min=1,
+                            inputmode="numeric",
+                            type="number",
+                            id="null_epoch",
+                            placeholder="",
+                            style={
+                                'width': '100px', 'text-align': 'center', 'hoverinfo': 'none'},
                         ),
-                        dbc.Col(
-                            [
-                                dbc.Input(
-                                    max=3,
-                                    min=1,
-                                    inputmode="numeric",
-                                    type="number",
-                                    id="null_epoch",
-                                    placeholder="",
-                                    style={'width': '100px', 'text-align' : 'center', 'hoverinfo':'none'},
-                                ),
-                            ],
-                            class_name="d-flex justify-content-center",
+                    ],
+                    class_name="d-flex justify-content-center",
+                ),
+                dbc.Col(
+                    [
+                        dbc.Input(
+                            max=3,
+                            min=1,
+                            inputmode="numeric",
+                            type="number",
+                            id="plus-one_epoch",
+                            placeholder="",
+                            disabled=True,
+                            style={'width': '100px',
+                                   'text-align': 'center'},
                         ),
-                        dbc.Col(
-                            [
-                                dbc.Input(
-                                    max=3,
-                                    min=1,
-                                    inputmode="numeric",
-                                    type="number",
-                                    id="plus-one_epoch",
-                                    placeholder="",
-                                    disabled =True,
-                                    style={'width': '100px', 'text-align' : 'center'},
-                                ),
-                            ],
-                            class_name="d-flex justify-content-center",
-                            ),
-                    ]),
-                fluid=True,
-                )],
-        fill=True,
-        )
-
+                    ],
+                    class_name="d-flex justify-content-center",
+                ),
+            ]),
+        fluid=True,
+    )],
+    fill=True,
+)
 
 
 def plot_traces(traces):
@@ -342,30 +344,29 @@ def get_acc_plot():
 
 
 # spectrum & histograms
-def get_hists():
+def get_hists(data):
 
-    # call trace from inside
-    trace = np.random.rand((100))
+    # list of 2 (power spectrums(by number of channels) and histograms(same))
+    # first powerspectrum and then histogram
 
-    fig = make_subplots(rows=2, cols=3, shared_yaxes=True,
+    spectrums = data[0]  # n*p
+    histos = data[1]  # n*p
+    nr_ch = histos.shape[1]
+
+    # check if it is True
+    assert spectrums.shape[1] == histos.shape[1]
+
+    fig = make_subplots(rows=2, cols=nr_ch, shared_yaxes=True,
                         print_grid=False, vertical_spacing=0.25, horizontal_spacing=0.05,
                         subplot_titles=("Power Spectrums", "", "", "Amplitude Histograms", "", ""))
 
-    fig.add_trace(go.Scatter(y=trace, mode="lines", line=dict(
-        color='black', width=1)), row=1, col=1)
-    fig.add_trace(go.Histogram(x=trace, marker_color='LightSkyBlue',
-                  opacity=0.75, histnorm="probability"), row=2, col=1)
-    fig.add_trace(go.Scatter(y=trace, mode="lines", line=dict(
-        color='black', width=1)), row=1, col=2)
-    fig.add_trace(go.Histogram(x=trace, marker_color='#330C73',
-                  opacity=0.75, histnorm="probability"), row=2, col=2)
-    fig.add_trace(go.Scatter(y=trace, mode="lines", line=dict(
-        color='black', width=1)), row=1, col=3)
-    fig.add_trace(go.Histogram(x=trace, marker_color='#330C73',
-                  opacity=0.75, histnorm="probability"), row=2, col=3)
+    for i in range(nr_ch):
+        fig.add_trace(go.Scatter(y=spectrums[:, i], mode="lines", line=dict(
+            color='black', width=1)), row=1, col=i+1)
+        fig.add_trace(go.Histogram(x=histos[:, i], marker_color='LightSkyBlue',
+                                   opacity=0.75, histnorm="probability"), row=2, col=i+1)
 
     # in case it is necessary for histograms xbins=dict(start=-3.0,end=4,size=0.5)
-
     fig.update_layout(margin=dict(l=1, r=1, t=20, b=1),
                       paper_bgcolor='rgba(0,0,0,0)',
                       plot_bgcolor='rgba(0,0,0,0)', bargap=0.25,
@@ -435,7 +436,7 @@ acc_graph = dcc.Graph(id="accuracy", figure=get_acc_plot(
 
 
 # hist graphs
-hist_graph = dcc.Graph(id="hist-graphs", figure=get_hists(),
+hist_graph = dcc.Graph(id="hist-graphs",
                        responsive=True, style={"width": "50vw", "height": "25vh"})
 
 # lower row left-side
@@ -484,7 +485,8 @@ app.layout = dbc.Container(
 @app.callback(
     [Output("epoch-index", "data"),
      Output("user-pressed-key", "data"),
-     Output("ch", "figure")],
+     Output("ch", "figure"),
+     Output("hist-graphs", "figure")],
 
     [Input("keyboard", "keydown"),
      Input("keyboard", "n_keydowns"),
@@ -493,71 +495,98 @@ app.layout = dbc.Container(
      Input("save-path", "data")]
 )
 def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path):
-    if n_keydowns:
-        print(event)
+
+    file_exist = False
+    if not save_path is None:
+        file_exist = os.path.exists(os.path.join(
+            save_path, str(0) + ".json"))
+
+    if n_keydowns and file_exist:
+
         # change input types
         epoch_index = int(epoch_index)
         max_nr_epochs = 10000  # temp
-
+        print("Epoch index at the beginning", epoch_index)
         # check what is user pressed key
-        if (event["key"] == "ArrowRight") and (not save_path is None):
+        if (event["key"] == "ArrowRight"):
+
             if epoch_index < max_nr_epochs:
-                # read data batch from disk / check if save_path exist
-                data_mid = pd.read_json(os.path.join(
-                    save_path, str(epoch_index) + ".json"))
-                data_right = pd.read_json(os.path.join(
-                    save_path, str(epoch_index + 1) + ".json"))
-
-                # combine mid_right datasets
-                full_trace = np.hstack(
-                    [np.stack(data_mid["data"]), np.stack(data_right["data"])])
-
-                # fix right epoch situtation
-                if epoch_index > 0:
-                    data_left = pd.read_json(os.path.join(
-                        save_path, str(epoch_index - 1) + ".json"))
-                    data_left = np.stack(data_left["data"])
-                else:
-                    data_left = np.zeros_like(np.stack(data_mid["data"]))
-
-                # refresh full trace
-                full_trace = np.hstack([data_left, full_trace])
-
-                # call for plot functions
-                fig_traces = plot_traces(full_trace.T)
-
                 epoch_index += 1
 
-                return epoch_index, event, fig_traces
-
-        elif (event["key"] == "ArrowLeft") and (not save_path is None):
+        elif (event["key"] == "ArrowLeft"):
             if epoch_index > 0:
                 epoch_index -= 1
 
-            # return epoch_index, event, fig_traces
-    elif (not n_keydowns) and (not save_path is None):
         # read data batch from disk / check if save_path exist
-        data_mid = pd.read_json(os.path.join(
-            save_path, str(0) + ".json"))
-        data_right = pd.read_json(os.path.join(
-            save_path, str(1) + ".json"))
+        df_mid = pd.read_json(os.path.join(
+            save_path, str(epoch_index) + ".json"))
+        data_mid = np.stack(df_mid["data"])
+        ps_mid = np.stack(df_mid["spectrums"]).T
+        hist_mid = np.stack(df_mid["histograms"]).T
+
+        full_ps_hist = [ps_mid, hist_mid]
+
+        if epoch_index == max_nr_epochs:
+            data_right = np.zeros_like(data_mid)
+        else:
+            data_right = np.stack(pd.read_json(os.path.join(
+                save_path, str(epoch_index + 1) + ".json"))["data"])
+
+        if epoch_index == 0:
+            data_left = np.zeros_like(data_mid)
+        else:
+            data_left = np.stack(pd.read_json(os.path.join(
+                save_path, str(epoch_index - 1) + ".json"))["data"])
 
         # combine mid_right datasets
         full_trace = np.hstack(
-            [np.zeros_like(np.stack(data_mid["data"])),
-             np.stack(data_mid["data"]),
-             np.stack(data_right["data"])])
-        fig_traces = plot_traces(full_trace.T)
-        return json.dumps(0), None, fig_traces
+            [data_left,
+             data_mid,
+             data_right])
 
-    return json.dumps(0), None, plot_traces(np.zeros((1000, 2)))
+        # call for plot functions
+        fig_traces = plot_traces(full_trace.T)
+        ps_hist_fig = get_hists(data=full_ps_hist)
+        print("Epoch index after plot", epoch_index)
+
+        return epoch_index, event, fig_traces, ps_hist_fig
+
+        # return epoch_index, event, fig_traces
+    elif (not n_keydowns) and (not save_path is None) and file_exist:
+        # read data batch from disk / check if save_path exist
+        df_mid = pd.read_json(os.path.join(
+            save_path, str(0) + ".json"))
+        data_mid = np.stack(df_mid["data"])
+
+        ps_mid = np.stack(df_mid["spectrums"]).T
+        hist_mid = np.stack(df_mid["histograms"]).T
+
+        df_right = pd.read_json(os.path.join(
+            save_path, str(1) + ".json"))
+        data_right = np.stack(df_right["data"])
+
+        full_ps_hist = [ps_mid, hist_mid]
+        # combine mid_right datasets
+        full_trace = np.hstack(
+            [np.zeros_like(data_mid),
+             data_mid,
+             data_right])
+
+        fig_traces = plot_traces(full_trace.T)
+        ps_hist_fig = get_hists(data=full_ps_hist)
+
+        return json.dumps(0), None, fig_traces, ps_hist_fig
+
+    return json.dumps(0), None, plot_traces(np.zeros((1000, 1))), get_hists([np.zeros((1000, 1)), np.zeros((1000, 1))])
 
 
 # collapse callback
-@app.callback(
+@ app.callback(
     Output("navbar-collapse", "is_open"),
     [Input("navbar-toggler", "n_clicks")],
     [State("navbar-collapse", "is_open")],
+
+
 )
 def toggle_navbar_collapse(n, is_open):
     if n:
@@ -566,7 +595,7 @@ def toggle_navbar_collapse(n, is_open):
 
 
 # Inside import button handle epoch length
-@app.callback(
+@ app.callback(
     [
         Output("input-group-dropdown-input", "value"),
         Output("input-group-dropdown-input", "placeholder"),
@@ -611,7 +640,7 @@ def user_custom_epoch_length(value):
 
 
 # Parameters collapse
-@app.callback(
+@ app.callback(
     Output("param_collapse", "is_open"),
     [Input("param_collapse_button", "n_clicks")],
     [State("param_collapse", "is_open")],
@@ -623,23 +652,23 @@ def toggle_param_collapse(n, is_open):
 
 
 # epoch scorings callback
-### NOT FUNCTIONAL FOR NOW
-@app.callback(
+# NOT FUNCTIONAL FOR NOW
+@ app.callback(
     [Output("minus-one_epoch", "value"),
      Output("null_epoch", "value")],
     [Input("null_epoch", "value")])
 def output_text(value):
     print(type(value))
     if value == 1 or value == 2 or value == 3:
-        value=value
+        value = value
         return value, ""
     else:
-        value=value
+        value = value
         return value, ""
 
 
 # channels loading callback
-@app.callback(
+@ app.callback(
     [Output("offcanvas", "is_open"),
      Output("input-file-loc", "data"),
      Output("save-path", "data"),
@@ -679,7 +708,7 @@ def toggle_offcanvas(n1, is_open):
     return is_open, None, None, "No Input Channels", None
 
 
-@app.callback(
+@ app.callback(
     Output("user-sampling-frequency", "data"),
 
     Input("sampling_fr_input", "value"),
