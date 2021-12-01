@@ -237,7 +237,7 @@ inputbar = dbc.Nav(children=[
                                     id="null_epoch",
                                     placeholder="",
                                     autocomplete="off",
-                                    style={'width': '100px', 'text-align' : 'center', 'hoverinfo':'none'},
+                                    style={'border': '2px solid', 'border-color': '#003D7F', 'width': '100px', 'text-align' : 'center', 'hoverinfo':'none'},
                                 ),
                             ],
                             class_name="d-flex justify-content-center",
@@ -290,17 +290,17 @@ def plot_traces(traces):
     # increase speed by factor of ~5
     for i in range(nr_ch):
         fig.add_trace(go.Scatter(y=traces[:, i], mode="lines", line=dict(
-            color='black', width=1)), row=i+1, col=1)
+            color='#003D7F', width=1)), row=i+1, col=1)
 
     for i in range(nr_ch):
 
         # adding lines (alternative is box)
         split_line1 = go.Scatter(x=[x0, x0], y=[y0[i], y1[i]], mode="lines",
                                  hoverinfo='skip',
-                                 line=dict(color='#003D7F', width=5, dash='dash'))
+                                 line=dict(color='black', width=3, dash='6px,3px,6px,3px'))
         split_line2 = go.Scatter(x=[x1, x1], y=[y0[i], y1[i]], mode="lines",
                                  hoverinfo='skip',
-                                 line=dict(color='#003D7F', width=5, dash='dash'))
+                                 line=dict(color='black', width=3, dash='6px,3px,6px,3px'))
 
         fig.add_trace(split_line1, row=i+1, col=1)
         fig.add_trace(split_line2, row=i+1, col=1)
