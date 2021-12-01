@@ -203,14 +203,15 @@ def process_input_data(path_to_file, path_to_save, start_index, end_index, epoch
 
     # if user ask for return
     if return_result:
-        return my_dict
+        return len(my_dict), my_dict
+    return len(my_dict)
 
 
 # write dictionary to json
 def dict_to_json(path, input_dict):
 
     pd.DataFrame(input_dict).to_json(path)
-    time.sleep(.0001)
+    time.sleep(.01)
 
 
 # file converter setion

@@ -177,7 +177,8 @@ navbar = dbc.NavbarSimple(
                             is_open=False,
                             backdrop='static',
                             scrollable=True,
-                            style={'background': 'rgba(255, 255, 255, 0.5)', 'backdrop-filter': 'blur(10px)'}
+                            style={
+                                'background': 'rgba(255, 255, 255, 0.4)', 'backdrop-filter': 'blur(7px)'}
                         ),
                     ]
                 ), width="auto"),
@@ -214,10 +215,10 @@ navbar = dbc.NavbarSimple(
 )
 
 inputbar = dbc.Nav(children=[
-        dbc.Container(
-            dbc.Row(
-                    [
-                        dbc.Col(
+    dbc.Container(
+        dbc.Row(
+            [
+                dbc.Col(
                             [
                                 dbc.Input(
                                     max=3,
@@ -226,63 +227,68 @@ inputbar = dbc.Nav(children=[
                                     type="number",
                                     id="minus-one_epoch",
                                     placeholder="",
-                                    disabled =True,
-                                    style={'width': '100px', 'text-align' : 'center'},
+                                    disabled=True,
+                                    style={'width': '100px',
+                                           'text-align': 'center'},
                                 ),
                             ],
-                            class_name="d-flex justify-content-center",
+                    class_name="d-flex justify-content-center",
+                ),
+                dbc.Col(
+                    [
+                        dbc.Input(
+                            max=3,
+                            min=1,
+                            inputmode="numeric",
+                            # type="number",
+                            id="null_epoch",
+                            placeholder="",
+                            autocomplete="off",
+                            style={'border': '2px solid', 'border-color': '#003D7F',
+                                   'width': '100px', 'text-align': 'center', 'hoverinfo': 'none'},
+
                         ),
-                        dbc.Col(
-                            [
-                                dbc.Input(
-                                    max=3,
-                                    min=1,
-                                    inputmode="numeric",
-                                    #type="number",
-                                    id="null_epoch",
-                                    placeholder="",
-				                    autocomplete="off",
-                                    style={'border': '2px solid', 'border-color': '#003D7F',
-                                           'width': '100px', 'text-align': 'center', 'hoverinfo': 'none'},
-                                    
-                                ),
-                            ],
-                            class_name="d-flex justify-content-center",
+                    ],
+                    class_name="d-flex justify-content-center",
+                ),
+                dbc.Col(
+                    [
+                        dbc.Input(
+                            max=3,
+                            min=1,
+                            inputmode="numeric",
+                            type="number",
+                            id="plus-one_epoch",
+                            placeholder="",
+                            disabled=True,
+                            style={'width': '100px',
+                                   'text-align': 'center'},
                         ),
-                        dbc.Col(
-                            [
-                                dbc.Input(
-                                    max=3,
-                                    min=1,
-                                    inputmode="numeric",
-                                    type="number",
-                                    id="plus-one_epoch",
-                                    placeholder="",
-                                    disabled =True,
-                                    style={'width': '100px', 'text-align' : 'center'},
-                                ),
-                            ],
-                            class_name="d-flex justify-content-center",
-                            ),
-                    ]),
-                fluid=True,
-                )],
-        fill=True,
-        )
+                    ],
+                    class_name="d-flex justify-content-center",
+                ),
+            ]),
+        fluid=True,
+    )],
+    fill=True,
+)
 
 
-def plot_traces(traces):
+def plot_traces(traces, s_fr=1):
 
     # traces --> n * p array
     # get trace length
     trace_len = len(traces[:, 0])
 
+    # xaxis
+    x_axis = np.linspace(0, trace_len/s_fr, trace_len)
+
     # number of channels
     nr_ch = traces.shape[1]
 
     # vertical ines positions
-    x0 = trace_len/3
-    x1 = (2 * trace_len) / 3
+    x0 = (trace_len/3) / s_fr
+    x1 = ((2 * trace_len) / 3) / s_fr
 
     y0 = []
     y1 = []
@@ -295,7 +301,7 @@ def plot_traces(traces):
     # changing px.line(y=trace)["data"][0] to go.Scatter(y=trace, mode="lines")
     # increase speed by factor of ~5
     for i in range(nr_ch):
-        fig.add_trace(go.Scatter(y=traces[:, i], mode="lines", line=dict(
+        fig.add_trace(go.Scatter(x=x_axis, y=traces[:, i], mode="lines", line=dict(
             color='#003D7F', width=1)), row=i+1, col=1)
 
     for i in range(nr_ch):
@@ -496,20 +502,31 @@ app.layout = dbc.Container(
      Input("keyboard", "n_keydowns"),
      Input("epoch-index", 'data'),
      Input("max-possible-epochs", "data"),
-     Input("save-path", "data")]
+     Input("save-path", "data"),
+     Input("user-sampling-frequency", "data"),
+     Input("input-file-default-info", "data")]
 )
-def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path):
+def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sample_fr, input_default):
 
     file_exist = False
     if not save_path is None:
         file_exist = os.path.exists(os.path.join(
             save_path, str(0) + ".json"))
 
-    if n_keydowns and file_exist:
+    # initialize sampling frequency
+    sampling_fr = 1
+    if (not input_default is None) and (pd.read_json(input_default).s_freq.values):
+        sampling_fr = pd.read_json(input_default).s_freq.values
+    if user_sample_fr is not None:
+        sampling_fr = int(user_sample_fr)
+
+    if n_keydowns and file_exist and ((event["key"] == "ArrowRight") or (event["key"] == "ArrowLeft")):
 
         # change input types
         epoch_index = int(epoch_index)
-        max_nr_epochs = 10000  # temp
+        if max_nr_epochs is None:
+            max_nr_epochs = 10000  # temp
+
         print("Epoch index at the beginning", epoch_index)
         # check what is user pressed key
         if (event["key"] == "ArrowRight"):
@@ -549,7 +566,7 @@ def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path):
              data_right])
 
         # call for plot functions
-        fig_traces = plot_traces(full_trace.T)
+        fig_traces = plot_traces(full_trace.T, s_fr=sampling_fr)
         ps_hist_fig = get_hists(data=full_ps_hist)
         print("Epoch index after plot", epoch_index)
 
@@ -576,7 +593,7 @@ def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path):
              data_mid,
              data_right])
 
-        fig_traces = plot_traces(full_trace.T)
+        fig_traces = plot_traces(full_trace.T, s_fr=sampling_fr)
         ps_hist_fig = get_hists(data=full_ps_hist)
 
         return json.dumps(0), None, fig_traces, ps_hist_fig
@@ -679,7 +696,6 @@ def toggle_offcanvas(n1, is_open):
 
 @ app.callback(
     Output("user-sampling-frequency", "data"),
-
     Input("sampling_fr_input", "value"),
 )
 def handle_sample_fr_input(value):
@@ -695,7 +711,8 @@ def get_channel_user_selection(channels):
 
 
 @app.callback(
-    Output("load_button", "children"),
+    [Output("load_button", "children"),
+     Output("max-possible-epochs", "data")],
     [Input("load_button", "n_clicks"),
      Input("input-file-loc", "data"),
      Input("save-path", "data"),
@@ -708,18 +725,21 @@ def action_load_button(n, filename, save_path, epoch_len, sample_fr, channel_lis
     if n:
         print(
             f"\n\nfilename: {filename} \nsavepath: {save_path} \nepoch_len:{epoch_len} \nsampling_fr:{sample_fr} \n\n")
-        process_input_data(path_to_file=filename,
-                           path_to_save=save_path,
-                           start_index=0,
-                           end_index=-1,
-                           epoch_len=int(epoch_len),
-                           fr=int(sample_fr),
-                           channel_list=json.loads(channel_list),
-                           return_result=False)
+        max_epoch_nr = process_input_data(path_to_file=filename,
+                                          path_to_save=save_path,
+                                          start_index=0,
+                                          end_index=-1,
+                                          epoch_len=int(epoch_len),
+                                          fr=int(sample_fr),
+                                          channel_list=json.loads(
+                                              channel_list),
+                                          return_result=False)
         print("Finished data loading")
-        return [dbc.Spinner(size="sm"), " Loading..."]
+        print(f"Max epochs: {max_epoch_nr}")
+        # [dbc.Spinner(size="sm"), " Loading..."]
+        return "Loaded", json.dumps(max_epoch_nr)
     else:
-        return "Load"
+        return "Load", None
 
 
 # run app if it get called
