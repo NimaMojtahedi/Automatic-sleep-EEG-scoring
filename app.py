@@ -213,10 +213,10 @@ navbar = dbc.NavbarSimple(
 )
 
 inputbar = dbc.Nav(children=[
-    dbc.Container(
-        dbc.Row(
-            [
-                dbc.Col(
+        dbc.Container(
+            dbc.Row(
+                    [
+                        dbc.Col(
                             [
                                 dbc.Input(
                                     max=3,
@@ -225,24 +225,11 @@ inputbar = dbc.Nav(children=[
                                     type="number",
                                     id="minus-one_epoch",
                                     placeholder="",
-                                    disabled=True,
-                                    style={'width': '100px',
-                                           'text-align': 'center'},
+                                    disabled =True,
+                                    style={'width': '100px', 'text-align' : 'center'},
                                 ),
                             ],
-                    class_name="d-flex justify-content-center",
-                ),
-                dbc.Col(
-                    [
-                        dbc.Input(
-                            max=3,
-                            min=1,
-                            inputmode="numeric",
-                            type="number",
-                            id="null_epoch",
-                            placeholder="",
-                            style={
-                                'width': '100px', 'text-align': 'center', 'hoverinfo': 'none'},
+                            class_name="d-flex justify-content-center",
                         ),
                         dbc.Col(
                             [
@@ -250,24 +237,37 @@ inputbar = dbc.Nav(children=[
                                     max=3,
                                     min=1,
                                     inputmode="numeric",
-                                    # type="number",
+                                    #type="number",
                                     id="null_epoch",
                                     placeholder="",
-                                    autocomplete="off",
+				                    autocomplete="off",
                                     style={'border': '2px solid', 'border-color': '#003D7F',
                                            'width': '100px', 'text-align': 'center', 'hoverinfo': 'none'},
+                                    
                                 ),
                             ],
                             class_name="d-flex justify-content-center",
                         ),
-                    ],
-                    class_name="d-flex justify-content-center",
-                ),
-            ]),
-        fluid=True,
-    )],
-    fill=True,
-)
+                        dbc.Col(
+                            [
+                                dbc.Input(
+                                    max=3,
+                                    min=1,
+                                    inputmode="numeric",
+                                    type="number",
+                                    id="plus-one_epoch",
+                                    placeholder="",
+                                    disabled =True,
+                                    style={'width': '100px', 'text-align' : 'center'},
+                                ),
+                            ],
+                            class_name="d-flex justify-content-center",
+                            ),
+                    ]),
+                fluid=True,
+                )],
+        fill=True,
+        )
 
 
 def plot_traces(traces):
