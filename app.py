@@ -11,6 +11,8 @@ import json
 import pdb
 import os
 import subprocess
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 
 # internal files and functions
 from utils import process_input_data, read_data_header
@@ -70,19 +72,6 @@ all_storage = html.Div([dcc.Store(id="epoch-index"),  # get input from keyboard 
                         dcc.Store(id="res12")])
 #####       #####       #####       #####       #####
 
-
-# draft training parameters list
-input_params = html.Div([
-    dbc.InputGroup([dbc.InputGroupText("ML algorithm"), dbc.Input(
-        placeholder="Which ML you want to use?")], class_name="mb-1"),
-    dbc.InputGroup([dbc.InputGroupText("nThread"), dbc.Input(
-        placeholder="The number of dedicated threads")], class_name="mb-1"),
-    dbc.InputGroup([dbc.InputGroupText("GPU"), dbc.Input(
-        placeholder="1 for yes, 0 for no")], class_name="mb-1"),
-    dbc.InputGroup([dbc.InputGroupText("Lag time"), dbc.Input(
-        placeholder="How much you can wait for training")], class_name="mb-1")
-])
-
 # config menu items
 config_menu_items = html.Div(
     [
@@ -92,15 +81,6 @@ config_menu_items = html.Div(
         dbc.DropdownMenuItem("Custom", id="dropdown-menu-item-3"),
     ],
 )
-
-
-# advanced parameters button
-param_collapse = html.Div([
-    dbc.Button("Advanced parameters", id="param_collapse_button",
-               size="sm", n_clicks=0),
-    dbc.Collapse(input_params, id="param_collapse", is_open=False)
-])
-
 
 # define channels
 def define_channels(channel_name=["No Channel in Data"]):
@@ -130,7 +110,7 @@ navbar = dbc.NavbarSimple(
         dbc.Row(
             [
                 dbc.Col(html.A(html.Img(src=University_Logo, height="40px"),
-                        href="http://www.physiologie2.uni-tuebingen.de/"), width="auto"),
+                        href="http://www.physiologie2.uni-tuebingen.de/", target="_blank"), width="auto"),
                 dbc.Col(html.H1("Sleezy", style={
                         'color': '#003D7F', 'fontSize': 35})),
 
@@ -138,7 +118,7 @@ navbar = dbc.NavbarSimple(
                 dbc.Col(html.Div(
                     [
                         dbc.Button("Import",
-                                   id="open-offcanvas", size="sm", n_clicks=0),
+                                   id="import-offcanvas-button", size="sm", n_clicks=0),
                         dbc.Offcanvas(children=[
 
                             html.P(
@@ -170,7 +150,7 @@ navbar = dbc.NavbarSimple(
                                     class_name="mt-3"),
 
                         ],
-                            id="offcanvas",
+                            id="import-offcanvas",
                             title="Before you load, there are 3 steps...",
                             is_open=False,
                             backdrop='static',
@@ -183,10 +163,36 @@ navbar = dbc.NavbarSimple(
 
                 dbc.Col(dbc.Button("Save", id="save-button",
                         size="sm"), width="auto"),
-                dbc.Col(dbc.Button(
-                    "Advanced", id="param_collapse_button", size="sm", n_clicks=0), width="auto"),
-                dbc.Col(dbc.Collapse(input_params, id="param_collapse",
-                        is_open=False), width="auto"),
+                dbc.Col(html.Div(
+                    [
+                        dbc.Button("Advanced",
+                                   id="advparam-button", size="sm", n_clicks=0),
+                        dbc.Offcanvas(children=[
+                            html.Div([
+                                dbc.InputGroup([dbc.InputGroupText("ML algorithm"), dbc.Input(
+                                    placeholder="Which ML you want to use?")], class_name="mb-1"),
+                                dbc.InputGroup([dbc.InputGroupText("nThread"), dbc.Input(
+                                    placeholder="The number of dedicated threads")], class_name="mb-1"),
+                                dbc.InputGroup([dbc.InputGroupText("GPU"), dbc.Input(
+                                    placeholder="1 for yes, 0 for no")], class_name="mb-1"),
+                                dbc.InputGroup([dbc.InputGroupText("Lag time"), dbc.Input(
+                                    placeholder="How much you can wait for training")], class_name="mb-1")
+                            ]),
+                            dbc.Row(dbc.Button("Apply", id="apply-params", size="sm"),
+                                    class_name="mt-3"),
+
+                        ],
+                            id="advparam-offcanvas",
+                            title="Here, you can customize the advance parameters!",
+                            is_open=False,
+                            backdrop='static',
+                            scrollable=True,
+                            placement='top',
+                            style={'title-color': '#463d3b', 'background': 'rgba(224, 236, 240, 0.2)', 'backdrop-filter': 'blur(10px)'}
+                        ),
+                    ]
+                ), width="auto"),
+
                 dbc.Col(dbc.Button("About Us", id="about-us-button", size="sm"),
                         width="auto"),
                 dbc.Col(dbc.Button("Help", id="help-button",
@@ -213,7 +219,7 @@ navbar = dbc.NavbarSimple(
 )
 
 inputbar = dbc.Nav(children=[
-    dbc.Container(
+    dbc.Container(children=[
         dbc.Row(
             [
                 dbc.Col(
@@ -248,23 +254,7 @@ inputbar = dbc.Nav(children=[
                     ],
                     class_name="d-flex justify-content-center",
                 ),
-                dbc.Col(
-                    [
-                        dbc.Input(
-                            max=3,
-                            min=1,
-                            inputmode="numeric",
-                            # type="number",
-                            id="null_epoch_act",
-                            placeholder="",
-                            autocomplete="off",
-                            style={'border': '2px solid', 'border-color': '#003D7F',
-                                   'width': '100px', 'text-align': 'center', 'hoverinfo': 'none'},
-
-                        ),
-                    ],
-                    class_name="d-flex justify-content-center",
-                ),
+                
                 dbc.Col(
                     [
                         dbc.Input(
@@ -282,6 +272,26 @@ inputbar = dbc.Nav(children=[
                     class_name="d-flex justify-content-center",
                 ),
             ]),
+            dbc.Row(
+            dbc.Col(
+                    [
+                        dbc.Input(
+                            max=3,
+                            min=1,
+                            inputmode="numeric",
+                            # type="number",
+                            id="null_epoch_act",
+                            placeholder="",
+                            autocomplete="off",
+                            style={'border': '2px solid', 'border-color': '#003D7F',
+                                   'width': '100px', 'text-align': 'center', 'hoverinfo': 'none'},
+                            
+                        ),
+                    ],
+                    class_name="d-flex justify-content-center",
+                ),
+                )
+    ],
         fluid=True,
     )],
     fill=True,
@@ -525,7 +535,7 @@ app.layout = dbc.Container(
      Input("save-path", "data"),
      Input("user-sampling-frequency", "data"),
      Input("input-file-default-info", "data"),
-     Input("offcanvas", "is_open"),
+     Input("import-offcanvas", "is_open"),
      Input("null_epoch_act", "value"),
      Input("scoring-labels", "data")]
 )
@@ -684,31 +694,29 @@ def user_custom_epoch_length(value):
 
 # Parameters collapse
 @ app.callback(
-    Output("param_collapse", "is_open"),
-    [Input("param_collapse_button", "n_clicks")],
-    [State("param_collapse", "is_open")],
+    Output("advparam-offcanvas", "is_open"),
+    [Input("advparam-button", "n_clicks")],
+    [State("advparam-offcanvas", "is_open")],
 )
-def toggle_param_collapse(n, is_open):
-    print(is_open)
+def toggle_adv_param_offcanvas(n, is_open):
     if n:
-        print(is_open)
         return not is_open
     return is_open
 
 
 # channels loading callback
 @ app.callback(
-    [Output("offcanvas", "is_open"),
+    [Output("import-offcanvas", "is_open"),
      Output("input-file-loc", "data"),
      Output("save-path", "data"),
      Output("channel_def_div", "children"),
      Output("input-file-default-info", "data")],
 
-    Input("open-offcanvas", "n_clicks"),
+    Input("import-offcanvas-button", "n_clicks"),
 
-    [State("offcanvas", "is_open")],
+    [State("import-offcanvas", "is_open")],
 )
-def toggle_offcanvas(n1, is_open):
+def toggle_import_offcanvas(n1, is_open):
     if n1:
         # reading only data header and updating Import button configs
         subprocess.run("python import_path.py", shell=True)
@@ -784,6 +792,11 @@ def action_load_button(n, filename, save_path, epoch_len, sample_fr, channel_lis
     else:
         return "Load", None
 
+# open browser
+#chrome_options = Options()
+#chrome_options.add_argument("--kiosk")
+#driver = webdriver.Chrome(chrome_options=chrome_options)
+#driver.get('http://localhost:8050/')
 
 @app.callback(
     Output("save-button", "children"),
