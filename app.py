@@ -1,6 +1,7 @@
 # Frontend file
 
 # required libraries
+from ntpath import join
 from types import LambdaType
 from dash_bootstrap_components._components.InputGroup import InputGroup
 import pandas as pd
@@ -71,19 +72,6 @@ all_storage = html.Div([dcc.Store(id="epoch-index"),  # get input from keyboard 
                         dcc.Store(id="res12")])
 #####       #####       #####       #####       #####
 
-
-# draft training parameters list
-input_params = html.Div([
-    dbc.InputGroup([dbc.InputGroupText("ML algorithm"), dbc.Input(
-        placeholder="Which ML you want to use?")], class_name="mb-1"),
-    dbc.InputGroup([dbc.InputGroupText("nThread"), dbc.Input(
-        placeholder="The number of dedicated threads")], class_name="mb-1"),
-    dbc.InputGroup([dbc.InputGroupText("GPU"), dbc.Input(
-        placeholder="1 for yes, 0 for no")], class_name="mb-1"),
-    dbc.InputGroup([dbc.InputGroupText("Lag time"), dbc.Input(
-        placeholder="How much you can wait for training")], class_name="mb-1")
-])
-
 # config menu items
 config_menu_items = html.Div(
     [
@@ -93,15 +81,6 @@ config_menu_items = html.Div(
         dbc.DropdownMenuItem("Custom", id="dropdown-menu-item-3"),
     ],
 )
-
-
-# advanced parameters button
-param_collapse = html.Div([
-    dbc.Button("Advanced parameters", id="param_collapse_button",
-               size="sm", n_clicks=0),
-    dbc.Collapse(input_params, id="param_collapse", is_open=False)
-])
-
 
 # define channels
 def define_channels(channel_name=["No Channel in Data"]):
@@ -139,7 +118,7 @@ navbar = dbc.NavbarSimple(
                 dbc.Col(html.Div(
                     [
                         dbc.Button("Import",
-                                   id="open-offcanvas", size="sm", n_clicks=0),
+                                   id="import-offcanvas-button", size="sm", n_clicks=0),
                         dbc.Offcanvas(children=[
 
                             html.P(
@@ -171,22 +150,49 @@ navbar = dbc.NavbarSimple(
                                     class_name="mt-3"),
 
                         ],
-                            id="offcanvas",
+                            id="import-offcanvas",
                             title="Before you load, there are 3 steps...",
                             is_open=False,
                             backdrop='static',
                             scrollable=True,
-                            style={'title-color': '#463d3b', 'background': 'rgba(224, 236, 240, 0.2)', 'backdrop-filter': 'blur(10px)'}
+                            style={
+                                'title-color': '#463d3b', 'background': 'rgba(224, 236, 240, 0.2)', 'backdrop-filter': 'blur(10px)'}
                         ),
                     ]
                 ), width="auto"),
 
                 dbc.Col(dbc.Button("Save", id="save-button",
                         size="sm"), width="auto"),
-                dbc.Col(dbc.Button(
-                    "Advanced", id="param_collapse_button", size="sm", n_clicks=0), width="auto"),
-                dbc.Col(dbc.Collapse(input_params, id="param_collapse",
-                        is_open=False), width="auto"),
+                dbc.Col(html.Div(
+                    [
+                        dbc.Button("Advanced",
+                                   id="advparam-button", size="sm", n_clicks=0),
+                        dbc.Offcanvas(children=[
+                            html.Div([
+                                dbc.InputGroup([dbc.InputGroupText("ML algorithm"), dbc.Input(
+                                    placeholder="Which ML you want to use?")], class_name="mb-1"),
+                                dbc.InputGroup([dbc.InputGroupText("nThread"), dbc.Input(
+                                    placeholder="The number of dedicated threads")], class_name="mb-1"),
+                                dbc.InputGroup([dbc.InputGroupText("GPU"), dbc.Input(
+                                    placeholder="1 for yes, 0 for no")], class_name="mb-1"),
+                                dbc.InputGroup([dbc.InputGroupText("Lag time"), dbc.Input(
+                                    placeholder="How much you can wait for training")], class_name="mb-1")
+                            ]),
+                            dbc.Row(dbc.Button("Apply", id="apply-params", size="sm"),
+                                    class_name="mt-3"),
+
+                        ],
+                            id="advparam-offcanvas",
+                            title="Here, you can customize the advance parameters!",
+                            is_open=False,
+                            backdrop='static',
+                            scrollable=True,
+                            placement='top',
+                            style={'title-color': '#463d3b', 'background': 'rgba(224, 236, 240, 0.2)', 'backdrop-filter': 'blur(10px)'}
+                        ),
+                    ]
+                ), width="auto"),
+
                 dbc.Col(dbc.Button("About Us", id="about-us-button", size="sm"),
                         width="auto"),
                 dbc.Col(dbc.Button("Help", id="help-button",
@@ -528,7 +534,7 @@ app.layout = dbc.Container(
      Input("save-path", "data"),
      Input("user-sampling-frequency", "data"),
      Input("input-file-default-info", "data"),
-     Input("offcanvas", "is_open"),
+     Input("import-offcanvas", "is_open"),
      Input("null_epoch_act", "value"),
      Input("scoring-labels", "data")]
 )
@@ -662,7 +668,7 @@ def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sampl
 
 
 # collapse callback
-@ app.callback(
+@app.callback(
     Output("navbar-collapse", "is_open"),
     [Input("navbar-toggler", "n_clicks")],
     [State("navbar-collapse", "is_open")],
@@ -687,31 +693,29 @@ def user_custom_epoch_length(value):
 
 # Parameters collapse
 @ app.callback(
-    Output("param_collapse", "is_open"),
-    [Input("param_collapse_button", "n_clicks")],
-    [State("param_collapse", "is_open")],
+    Output("advparam-offcanvas", "is_open"),
+    [Input("advparam-button", "n_clicks")],
+    [State("advparam-offcanvas", "is_open")],
 )
-def toggle_param_collapse(n, is_open):
-    print(is_open)
+def toggle_adv_param_offcanvas(n, is_open):
     if n:
-        print(is_open)
         return not is_open
     return is_open
 
 
 # channels loading callback
 @ app.callback(
-    [Output("offcanvas", "is_open"),
+    [Output("import-offcanvas", "is_open"),
      Output("input-file-loc", "data"),
      Output("save-path", "data"),
      Output("channel_def_div", "children"),
      Output("input-file-default-info", "data")],
 
-    Input("open-offcanvas", "n_clicks"),
+    Input("import-offcanvas-button", "n_clicks"),
 
-    [State("offcanvas", "is_open")],
+    [State("import-offcanvas", "is_open")],
 )
-def toggle_offcanvas(n1, is_open):
+def toggle_import_offcanvas(n1, is_open):
     if n1:
         # reading only data header and updating Import button configs
         subprocess.run("python import_path.py", shell=True)
@@ -792,6 +796,36 @@ def action_load_button(n, filename, save_path, epoch_len, sample_fr, channel_lis
 #chrome_options.add_argument("--kiosk")
 #driver = webdriver.Chrome(chrome_options=chrome_options)
 #driver.get('http://localhost:8050/')
+
+@app.callback(
+    Output("save-button", "children"),
+
+    [Input("save-button", "n_clicks"),
+     Input("input-file-loc", "data"),
+     Input("scoring-labels", "data")]
+)
+def save_button(n_clicks, input_data_loc, scoring_results):
+
+    if n_clicks:
+        print("inside save button")
+        # first create a folder or make sure the folder exist
+        save_path = os.path.join(os.path.split(
+            input_data_loc)[0], "SleezyResults")
+        os.makedirs(save_path, exist_ok=True)
+
+        # saving scoring results
+        #   1. reading as pandas dataframe
+        scoring_results = pd.read_json(scoring_results)
+
+        #   2. saving in any suitable format
+        scoring_results.to_json(os.path.join(save_path, "score_results.json"))
+
+        scoring_results.to_csv(os.path.join(
+            save_path, "score_results.csv"), index=False)
+
+        return "Save"
+    return "Save"
+
 
 # run app if it get called
 if __name__ == '__main__':
