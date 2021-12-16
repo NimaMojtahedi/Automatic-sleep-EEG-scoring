@@ -10,6 +10,8 @@ import json
 import pdb
 import os
 import subprocess
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 
 # internal files and functions
 from utils import process_input_data, read_data_header
@@ -129,7 +131,7 @@ navbar = dbc.NavbarSimple(
         dbc.Row(
             [
                 dbc.Col(html.A(html.Img(src=University_Logo, height="40px"),
-                        href="http://www.physiologie2.uni-tuebingen.de/"), width="auto"),
+                        href="http://www.physiologie2.uni-tuebingen.de/", target="_blank"), width="auto"),
                 dbc.Col(html.H1("Sleezy", style={
                         'color': '#003D7F', 'fontSize': 35})),
 
@@ -211,7 +213,7 @@ navbar = dbc.NavbarSimple(
 )
 
 inputbar = dbc.Nav(children=[
-    dbc.Container(
+    dbc.Container(children=[
         dbc.Row(
             [
                 dbc.Col(
@@ -246,23 +248,7 @@ inputbar = dbc.Nav(children=[
                     ],
                     class_name="d-flex justify-content-center",
                 ),
-                dbc.Col(
-                    [
-                        dbc.Input(
-                            max=3,
-                            min=1,
-                            inputmode="numeric",
-                            # type="number",
-                            id="null_epoch_act",
-                            placeholder="",
-                            autocomplete="off",
-                            style={'border': '2px solid', 'border-color': '#003D7F',
-                                   'width': '100px', 'text-align': 'center', 'hoverinfo': 'none'},
-                            
-                        ),
-                    ],
-                    class_name="d-flex justify-content-center",
-                ),
+                
                 dbc.Col(
                     [
                         dbc.Input(
@@ -280,6 +266,26 @@ inputbar = dbc.Nav(children=[
                     class_name="d-flex justify-content-center",
                 ),
             ]),
+            dbc.Row(
+            dbc.Col(
+                    [
+                        dbc.Input(
+                            max=3,
+                            min=1,
+                            inputmode="numeric",
+                            # type="number",
+                            id="null_epoch_act",
+                            placeholder="",
+                            autocomplete="off",
+                            style={'border': '2px solid', 'border-color': '#003D7F',
+                                   'width': '100px', 'text-align': 'center', 'hoverinfo': 'none'},
+                            
+                        ),
+                    ],
+                    class_name="d-flex justify-content-center",
+                ),
+                )
+    ],
         fluid=True,
     )],
     fill=True,
@@ -781,6 +787,11 @@ def action_load_button(n, filename, save_path, epoch_len, sample_fr, channel_lis
     else:
         return "Load", None
 
+# open browser
+#chrome_options = Options()
+#chrome_options.add_argument("--kiosk")
+#driver = webdriver.Chrome(chrome_options=chrome_options)
+#driver.get('http://localhost:8050/')
 
 # run app if it get called
 if __name__ == '__main__':
