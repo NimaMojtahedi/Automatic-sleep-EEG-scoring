@@ -1,6 +1,7 @@
 # Frontend file
 
 # required libraries
+from ntpath import join
 from types import LambdaType
 from dash_bootstrap_components._components.InputGroup import InputGroup
 import pandas as pd
@@ -174,7 +175,8 @@ navbar = dbc.NavbarSimple(
                             is_open=False,
                             backdrop='static',
                             scrollable=True,
-                            style={'title-color': '#463d3b', 'background': 'rgba(224, 236, 240, 0.2)', 'backdrop-filter': 'blur(10px)'}
+                            style={
+                                'title-color': '#463d3b', 'background': 'rgba(224, 236, 240, 0.2)', 'backdrop-filter': 'blur(10px)'}
                         ),
                     ]
                 ), width="auto"),
@@ -258,7 +260,7 @@ inputbar = dbc.Nav(children=[
                             autocomplete="off",
                             style={'border': '2px solid', 'border-color': '#003D7F',
                                    'width': '100px', 'text-align': 'center', 'hoverinfo': 'none'},
-                            
+
                         ),
                     ],
                     class_name="d-flex justify-content-center",
@@ -656,7 +658,7 @@ def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sampl
 
 
 # collapse callback
-@ app.callback(
+@app.callback(
     Output("navbar-collapse", "is_open"),
     [Input("navbar-toggler", "n_clicks")],
     [State("navbar-collapse", "is_open")],
@@ -780,6 +782,36 @@ def action_load_button(n, filename, save_path, epoch_len, sample_fr, channel_lis
         return "Loaded", json.dumps(max_epoch_nr)
     else:
         return "Load", None
+
+
+@app.callback(
+    Output("save-button", "children"),
+
+    [Input("save-button", "n_clicks"),
+     Input("input-file-loc", "data"),
+     Input("scoring-labels", "data")]
+)
+def save_button(n_clicks, input_data_loc, scoring_results):
+
+    if n_clicks:
+        print("inside save button")
+        # first create a folder or make sure the folder exist
+        save_path = os.path.join(os.path.split(
+            input_data_loc)[0], "SleezyResults")
+        os.makedirs(save_path, exist_ok=True)
+
+        # saving scoring results
+        #   1. reading as pandas dataframe
+        scoring_results = pd.read_json(scoring_results)
+
+        #   2. saving in any suitable format
+        scoring_results.to_json(os.path.join(save_path, "score_results.json"))
+
+        scoring_results.to_csv(os.path.join(
+            save_path, "score_results.csv"), index=False)
+
+        return "Save"
+    return "Save"
 
 
 # run app if it get called
