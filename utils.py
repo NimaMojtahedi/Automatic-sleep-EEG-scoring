@@ -187,7 +187,7 @@ def process_input_data(path_to_file, path_to_save, start_index, end_index, epoch
 
             FE = FeatureEng(data=temp_data[:, i], fs=fr)
             hists.append(FE.histogram())
-            spectrums.append(FE.power_spec(keep_f=30))
+            spectrums.append(FE.power_spec(keep_f=30)) # at the moment fix 30
 
         # load calculation to dictionary
         dict_.update({"histograms": hists,

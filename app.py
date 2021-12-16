@@ -383,7 +383,8 @@ def get_hists(data):
                         subplot_titles=("Power Spectrums", "", "", "Amplitude Histograms", "", ""))
 
     for i in range(nr_ch):
-        fig.add_trace(go.Scatter(y=spectrums[:, i], mode="lines", line=dict(
+        # at the moment x is fixed to 30 Hz 120 = 30 * 4 (always 4)
+        fig.add_trace(go.Scatter(x=np.linspace(0, 30, 120), y=spectrums[:, i], mode="lines", line=dict(
             color='black', width=1)), row=1, col=i+1)
         fig.add_trace(go.Histogram(x=histos[:, i], marker_color='LightSkyBlue',
                                    opacity=0.75, histnorm="probability"), row=2, col=i+1)

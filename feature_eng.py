@@ -26,7 +26,8 @@ class FeatureEng:
         # import libraries
         from scipy.signal import welch
 
-        f, Pxx_den = welch(x=self.data, fs=self.fs, nperseg=2048)
+        f, Pxx_den = welch(x=self.data, fs=self.fs,
+                           nperseg=self.fs * 2, nfft=self.fs * 4)
         return Pxx_den[f < keep_f]
 
     def histogram(self, nr_bins=100, range=[-3, 3], as_density=True):

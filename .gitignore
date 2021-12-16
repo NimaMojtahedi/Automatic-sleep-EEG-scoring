@@ -85,6 +85,7 @@ ipython_config.py
 exp.edf
 filename.txt
 temp_save_add/
+SleezyResults/
 
 # pyenv
 .python-version
