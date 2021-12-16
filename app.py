@@ -92,14 +92,6 @@ config_menu_items = html.Div(
     ],
 )
 
-# import configs
-input_config = html.Div([
-    dbc.InputGroup([
-        dbc.DropdownMenu(config_menu_items, label="Species"),
-        dbc.Input(id="epoch-length-input", placeholder="Epoch length")]),
-    dbc.InputGroup([dbc.InputGroupText("Channels to import"), dbc.Input(
-        placeholder="How many channels do you have?")])
-])
 
 # advanced parameters button
 param_collapse = html.Div([
@@ -126,6 +118,7 @@ def define_channels(channel_name=["No Channel in Data"]):
         switch=True,
         inputStyle={"margin-right": "10px"},
         labelStyle={'display': 'block'},
+        style={'color': '#463d3b'}
     )
     return channels
 
@@ -148,14 +141,16 @@ navbar = dbc.NavbarSimple(
                         dbc.Offcanvas(children=[
 
                             html.P(
-                                "1) Please customize the epoch length below:"
+                                "1) Please customize the epoch length below:",
+                                style={'color': '#463d3b'}
                             ),
                             dbc.InputGroup([dbc.InputGroupText("Epoch length"), dbc.Input(
                                 placeholder="in seconds", autocomplete="off", id="epoch-length-input")],
                                 class_name="mb-4"),
 
                             html.P(
-                                "2) Please specify the sampling frequency:"
+                                "2) Please specify the sampling frequency:",
+                                style={'color': '#463d3b'}
                             ),
                             dbc.InputGroup([dbc.InputGroupText("Sampling frequency"), dbc.Input(
                                 placeholder="in Hz", autocomplete="off", id="sampling_fr_input")],
@@ -165,12 +160,13 @@ navbar = dbc.NavbarSimple(
                                 "3) Below are the channels of your dataset. "
                                 "Please select which ones you want to load, "
                                 "and then, press the Load button. "
-                                "This can take a couple of minutes!"
+                                "This can take a couple of minutes!",
+                                style={'color': '#463d3b'}
                             ),
 
                             html.Div(define_channels(), id="channel_def_div"),
                             dbc.Row(dbc.Button("Load", id="load_button", size="sm"),
-                                    class_name="mt-2"),
+                                    class_name="mt-3"),
 
                         ],
                             id="offcanvas",
@@ -178,8 +174,7 @@ navbar = dbc.NavbarSimple(
                             is_open=False,
                             backdrop='static',
                             scrollable=True,
-                            style={
-                                'background': 'rgba(255, 255, 255, 0.4)', 'backdrop-filter': 'blur(7px)'}
+                            style={'title-color': '#463d3b', 'background': 'rgba(224, 236, 240, 0.2)', 'backdrop-filter': 'blur(10px)'}
                         ),
                     ]
                 ), width="auto"),
@@ -263,7 +258,7 @@ inputbar = dbc.Nav(children=[
                             autocomplete="off",
                             style={'border': '2px solid', 'border-color': '#003D7F',
                                    'width': '100px', 'text-align': 'center', 'hoverinfo': 'none'},
-
+                            
                         ),
                     ],
                     class_name="d-flex justify-content-center",
@@ -337,7 +332,7 @@ def plot_traces(traces, s_fr=1):
     fig.update_layout(margin=dict(l=0, r=0, t=1, b=1),
                       paper_bgcolor='rgba(0,0,0,0)',
                       plot_bgcolor='rgba(0,0,0,0)',
-                      width=900, height=400, showlegend=False
+                      showlegend=False
                       )
     return fig
 
