@@ -1,6 +1,7 @@
 # Frontend file
 
 # required libraries
+from types import LambdaType
 from dash_bootstrap_components._components.InputGroup import InputGroup
 import pandas as pd
 import numpy as np
@@ -63,7 +64,7 @@ all_storage = html.Div([dcc.Store(id="epoch-index"),  # get input from keyboard 
                         # get input from keyboard callback
                         dcc.Store(id="user-pressed-key"),
                         dcc.Store(id="max-possible-epochs"),
-                        dcc.Store(id="res10"),
+                        dcc.Store(id="scoring-labels"),
                         dcc.Store(id="res11"),
                         dcc.Store(id="res12")])
 #####       #####       #####       #####       #####
@@ -240,8 +241,24 @@ inputbar = dbc.Nav(children=[
                             max=3,
                             min=1,
                             inputmode="numeric",
-                            # type="number",
+                            type="number",
                             id="null_epoch",
+                            placeholder="",
+                            disabled=True,
+                            style={'width': '100px',
+                                   'text-align': 'center'},
+                        ),
+                    ],
+                    class_name="d-flex justify-content-center",
+                ),
+                dbc.Col(
+                    [
+                        dbc.Input(
+                            max=3,
+                            min=1,
+                            inputmode="numeric",
+                            # type="number",
+                            id="null_epoch_act",
                             placeholder="",
                             autocomplete="off",
                             style={'border': '2px solid', 'border-color': '#003D7F',
@@ -496,7 +513,12 @@ app.layout = dbc.Container(
     [Output("epoch-index", "data"),
      Output("user-pressed-key", "data"),
      Output("ch", "figure"),
-     Output("hist-graphs", "figure")],
+     Output("hist-graphs", "figure"),
+     Output("minus-one_epoch", "value"),
+     Output("null_epoch", "value"),
+     Output("null_epoch_act", "value"),
+     Output("plus-one_epoch", "value"),
+     Output("scoring-labels", "data")],
 
     [Input("keyboard", "keydown"),
      Input("keyboard", "n_keydowns"),
@@ -504,9 +526,12 @@ app.layout = dbc.Container(
      Input("max-possible-epochs", "data"),
      Input("save-path", "data"),
      Input("user-sampling-frequency", "data"),
-     Input("input-file-default-info", "data")]
+     Input("input-file-default-info", "data"),
+     Input("offcanvas", "is_open"),
+     Input("null_epoch_act", "value"),
+     Input("scoring-labels", "data")]
 )
-def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sample_fr, input_default):
+def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sample_fr, input_default, off_canvas, score_value, score_storage):
 
     file_exist = False
     if not save_path is None:
@@ -520,23 +545,52 @@ def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sampl
     if user_sample_fr is not None:
         sampling_fr = int(user_sample_fr)
 
-    if n_keydowns and file_exist and ((event["key"] == "ArrowRight") or (event["key"] == "ArrowLeft")):
+    # change score_value data type
+    if (not score_value is None) and score_value.isnumeric():
+        score_value = int(score_value)
+
+    # change score_storage data format
+    if not score_storage is None:
+        score_storage = pd.read_json(score_storage)
+        print("score at the beginning", type(score_storage), score_storage)
+
+    # It is important False off_canvas
+    if n_keydowns and file_exist and not off_canvas:
 
         # change input types
         epoch_index = int(epoch_index)
         if max_nr_epochs is None:
             max_nr_epochs = 10000  # temp
+        else:
+            max_nr_epochs = int(max_nr_epochs)
 
         print("Epoch index at the beginning", epoch_index)
-        # check what is user pressed key
-        if (event["key"] == "ArrowRight"):
+
+        # update figures with only left/right arrow keys
+        if ((event["key"] == "ArrowRight") or (event["key"] == "ArrowLeft")):
+
+            # check what is user pressed key
+            if (event["key"] == "ArrowRight"):
+                if epoch_index < max_nr_epochs:
+                    epoch_index += 1
+
+            elif (event["key"] == "ArrowLeft"):
+                if epoch_index > 0:
+                    epoch_index -= 1
+
+        # update figures with score labels
+        if score_value == 1 or score_value == 2 or score_value == 3:
+
+            # saving score label to storage
+            if not score_storage is None:
+                score_storage = pd.concat([score_storage, pd.DataFrame(
+                    [{epoch_index: score_value}])], axis=1)
+            else:
+                score_storage = pd.DataFrame([
+                    {epoch_index: score_value}])
 
             if epoch_index < max_nr_epochs:
                 epoch_index += 1
-
-        elif (event["key"] == "ArrowLeft"):
-            if epoch_index > 0:
-                epoch_index -= 1
 
         # read data batch from disk / check if save_path exist
         df_mid = pd.read_json(os.path.join(
@@ -562,43 +616,48 @@ def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sampl
         # combine mid_right datasets
         full_trace = np.hstack(
             [data_left,
-             data_mid,
-             data_right])
+                data_mid,
+                data_right])
 
         # call for plot functions
         fig_traces = plot_traces(full_trace.T, s_fr=sampling_fr)
         ps_hist_fig = get_hists(data=full_ps_hist)
         print("Epoch index after plot", epoch_index)
 
-        return epoch_index, event, fig_traces, ps_hist_fig
+        # check and update score labels (after key left/right if they exist)
+        if not score_storage is None:
+            # pdb.set_trace()
+            if epoch_index in score_storage.keys():
+                null_score_label = str(
+                    score_storage[epoch_index].values[0])
+            else:
+                null_score_label = ""
 
-        # return epoch_index, event, fig_traces
-    elif (not n_keydowns) and (not save_path is None) and file_exist:
-        # read data batch from disk / check if save_path exist
-        df_mid = pd.read_json(os.path.join(
-            save_path, str(0) + ".json"))
-        data_mid = np.stack(df_mid["data"])
+            if (epoch_index - 1) in score_storage.keys():
+                epoch_minus_one_label = str(
+                    score_storage[epoch_index - 1].values[0])
+            else:
+                epoch_minus_one_label = ""
 
-        ps_mid = np.stack(df_mid["spectrums"]).T
-        hist_mid = np.stack(df_mid["histograms"]).T
+            if (epoch_index + 1) in score_storage.keys():
+                epoch_plus_one_label = str(
+                    score_storage[epoch_index + 1].values[0])
+            else:
+                epoch_plus_one_label = ""
 
-        df_right = pd.read_json(os.path.join(
-            save_path, str(1) + ".json"))
-        data_right = np.stack(df_right["data"])
+        else:
+            null_score_label = ""
+            epoch_minus_one_label = ""
+            epoch_plus_one_label = ""
 
-        full_ps_hist = [ps_mid, hist_mid]
-        # combine mid_right datasets
-        full_trace = np.hstack(
-            [np.zeros_like(data_mid),
-             data_mid,
-             data_right])
+        # change datatype
+        if not score_storage is None:
+            # pdb.set_trace()
+            score_storage = score_storage.to_json()
 
-        fig_traces = plot_traces(full_trace.T, s_fr=sampling_fr)
-        ps_hist_fig = get_hists(data=full_ps_hist)
+        return epoch_index, event, fig_traces, ps_hist_fig, epoch_minus_one_label, null_score_label, "", epoch_plus_one_label, score_storage
 
-        return json.dumps(0), None, fig_traces, ps_hist_fig
-
-    return json.dumps(0), None, plot_traces(np.zeros((1000, 1))), get_hists([np.zeros((1000, 1)), np.zeros((1000, 1))])
+    return json.dumps(0), None, plot_traces(np.zeros((1000, 1))), get_hists([np.zeros((1000, 1)), np.zeros((1000, 1))]), "", "", "", "", None
 
 
 # collapse callback
@@ -632,25 +691,11 @@ def user_custom_epoch_length(value):
     [State("param_collapse", "is_open")],
 )
 def toggle_param_collapse(n, is_open):
+    print(is_open)
     if n:
+        print(is_open)
         return not is_open
     return is_open
-
-
-# epoch scorings callback
-# NOT FUNCTIONAL FOR NOW
-@ app.callback(
-    [Output("minus-one_epoch", "value"),
-     Output("null_epoch", "value")],
-    [Input("null_epoch", "value")])
-def output_text(value):
-    print(type(value))
-    if value == 1 or value == 2 or value == 3:
-        value = value
-        return value, ""
-    else:
-        value = value
-        return value, ""
 
 
 # channels loading callback
