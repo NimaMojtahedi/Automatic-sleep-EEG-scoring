@@ -1,6 +1,7 @@
 # Frontend file
 
 # required libraries
+from datetime import time
 from ntpath import join
 from types import LambdaType
 from dash_bootstrap_components._components.InputGroup import InputGroup
@@ -9,10 +10,11 @@ import numpy as np
 from sklearn.metrics import confusion_matrix
 import json
 import pdb
+import time
 import os
 import subprocess
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
+#from selenium import webdriver
+#from selenium.webdriver.chrome.options import Options
 
 # internal files and functions
 from utils import process_input_data, read_data_header
@@ -21,6 +23,7 @@ from utils import process_input_data, read_data_header
 import dash
 from dash import dcc
 from dash import html
+#import dash_daq as daq
 import plotly.graph_objs as go
 import dash_bootstrap_components as dbc
 from dash import Input, Output, State, html
@@ -81,6 +84,7 @@ config_menu_items = html.Div(
         dbc.DropdownMenuItem("Custom", id="dropdown-menu-item-3"),
     ],
 )
+
 
 # define channels
 def define_channels(channel_name=["No Channel in Data"]):
@@ -254,7 +258,7 @@ inputbar = dbc.Nav(children=[
                     ],
                     class_name="d-flex justify-content-center",
                 ),
-                
+
                 dbc.Col(
                     [
                         dbc.Input(
@@ -272,25 +276,25 @@ inputbar = dbc.Nav(children=[
                     class_name="d-flex justify-content-center",
                 ),
             ]),
-            dbc.Row(
+        dbc.Row(
             dbc.Col(
-                    [
-                        dbc.Input(
-                            max=3,
-                            min=1,
-                            inputmode="numeric",
-                            # type="number",
-                            id="null_epoch_act",
-                            placeholder="",
-                            autocomplete="off",
-                            style={'border': '2px solid', 'border-color': '#003D7F',
-                                   'width': '100px', 'text-align': 'center', 'hoverinfo': 'none'},
-                            
-                        ),
-                    ],
-                    class_name="d-flex justify-content-center",
-                ),
-                )
+                [
+                    dbc.Input(
+                        max=3,
+                        min=1,
+                        inputmode="numeric",
+                        # type="number",
+                        id="null_epoch_act",
+                        placeholder="",
+                        autocomplete="off",
+                        style={'border': '2px solid', 'border-color': '#003D7F',
+                               'width': '100px', 'text-align': 'center', 'hoverinfo': 'none'},
+
+                    ),
+                ],
+                class_name="d-flex justify-content-center",
+            ),
+        )
     ],
         fluid=True,
     )],
@@ -364,16 +368,17 @@ def plot_traces(traces, s_fr=1):
 
 
 # get accuracy plot
-def get_acc_plot():
+def get_acc_plot(a=0.5):
 
     ### call any function to receive train, val accuracy values inside this function #####
 
     # this will change with real data
     df = pd.DataFrame(
-        {"Train": np.exp(-1/np.arange(2, 10, .1)), "Validation":  np.exp(-1/np.arange(2, 10, .1)) + .05})
+        {"Train": np.exp(-1/np.arange(2, 10, .1)) + a*2,
+         "Val":  np.exp(-1/np.arange(2, 10, .1)) + a})
 
     # start plotting
-    fig = px.line(df, y=["Train", "Validation"])
+    fig = px.line(df, y=["Val", "Train"])
     fig.update_layout(paper_bgcolor='rgba(0,0,0,0)',
                       plot_bgcolor='rgba(0,0,0,0)',
                       margin=dict(l=1, r=1, t=1, b=1),
@@ -832,9 +837,10 @@ def action_load_button(n, filename, save_path, epoch_len, sample_fr, channel_lis
 
 # open browser
 #chrome_options = Options()
-#chrome_options.add_argument("--kiosk")
+# chrome_options.add_argument("--kiosk")
 #driver = webdriver.Chrome(chrome_options=chrome_options)
-#driver.get('http://localhost:8050/')
+# driver.get('http://localhost:8050/')
+
 
 @app.callback(
     Output("save-button", "children"),
@@ -864,6 +870,23 @@ def save_button(n_clicks, input_data_loc, scoring_results):
 
         return "Save"
     return "Save"
+
+
+# training
+@app.callback(
+    Output("accuracy", "figure"),
+    Input("epoch-index", "data")
+)
+def train_indicator(epoch_index):
+    if not epoch_index is None:
+        epoch_index = int(epoch_index)
+        if (epoch_index % 10 == 0) and (not epoch_index == 0):
+            # do 1 round of training
+            time.sleep(10)
+            # there is 1 epoch difference between this callback and keyboard callback
+            print("inside train", epoch_index)
+            return get_acc_plot(a=2)
+    return get_acc_plot()
 
 
 # run app if it get called
