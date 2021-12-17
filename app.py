@@ -627,8 +627,12 @@ def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sampl
 
             # saving score label to storage
             if not score_storage is None:
-                score_storage = pd.concat([score_storage, pd.DataFrame(
-                    [{epoch_index: score_value}])], axis=1)
+                # re-scoring effect
+                if epoch_index in score_storage.keys():
+                    score_storage[epoch_index] = score_value
+                else:
+                    score_storage = pd.concat([score_storage, pd.DataFrame(
+                        [{epoch_index: score_value}])], axis=1)
             else:
                 score_storage = pd.DataFrame([
                     {epoch_index: score_value}])
@@ -698,7 +702,6 @@ def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sampl
 
         # change datatype
         if not score_storage is None:
-            # pdb.set_trace()
             score_storage = score_storage.to_json()
 
         return epoch_index, event, fig_traces, ps_hist_fig, epoch_minus_one_label, null_score_label, "", epoch_plus_one_label, score_storage, slider_live_value, max_sliderbar, epoch_index
