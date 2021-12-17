@@ -845,9 +845,9 @@ def train_indicator(epoch_index):
         epoch_index = int(epoch_index)
         if (epoch_index % 10 == 0) and (not epoch_index == 0):
             # do 1 round of training
+            print("inside train", epoch_index)
             time.sleep(10)
             # there is 1 epoch difference between this callback and keyboard callback
-            print("inside train", epoch_index)
             return get_acc_plot(a=2)
     return get_acc_plot()
 
