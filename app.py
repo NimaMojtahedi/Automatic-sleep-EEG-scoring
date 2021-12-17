@@ -11,8 +11,8 @@ import json
 import pdb
 import os
 import subprocess
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
+#from selenium import webdriver
+#from selenium.webdriver.chrome.options import Options
 
 # internal files and functions
 from utils import process_input_data, read_data_header
@@ -81,6 +81,7 @@ config_menu_items = html.Div(
         dbc.DropdownMenuItem("Custom", id="dropdown-menu-item-3"),
     ],
 )
+
 
 # define channels
 def define_channels(channel_name=["No Channel in Data"]):
@@ -188,7 +189,8 @@ navbar = dbc.NavbarSimple(
                             backdrop='static',
                             scrollable=True,
                             placement='top',
-                            style={'title-color': '#463d3b', 'background': 'rgba(224, 236, 240, 0.2)', 'backdrop-filter': 'blur(10px)'}
+                            style={
+                                'title-color': '#463d3b', 'background': 'rgba(224, 236, 240, 0.2)', 'backdrop-filter': 'blur(10px)'}
                         ),
                     ]
                 ), width="auto"),
@@ -254,7 +256,7 @@ inputbar = dbc.Nav(children=[
                     ],
                     class_name="d-flex justify-content-center",
                 ),
-                
+
                 dbc.Col(
                     [
                         dbc.Input(
@@ -272,25 +274,25 @@ inputbar = dbc.Nav(children=[
                     class_name="d-flex justify-content-center",
                 ),
             ]),
-            dbc.Row(
+        dbc.Row(
             dbc.Col(
-                    [
-                        dbc.Input(
-                            max=3,
-                            min=1,
-                            inputmode="numeric",
-                            # type="number",
-                            id="null_epoch_act",
-                            placeholder="",
-                            autocomplete="off",
-                            style={'border': '2px solid', 'border-color': '#003D7F',
-                                   'width': '100px', 'text-align': 'center', 'hoverinfo': 'none'},
-                            
-                        ),
-                    ],
-                    class_name="d-flex justify-content-center",
-                ),
-                )
+                [
+                    dbc.Input(
+                        max=3,
+                        min=1,
+                        inputmode="numeric",
+                        # type="number",
+                        id="null_epoch_act",
+                        placeholder="",
+                        autocomplete="off",
+                        style={'border': '2px solid', 'border-color': '#003D7F',
+                               'width': '100px', 'text-align': 'center', 'hoverinfo': 'none'},
+
+                    ),
+                ],
+                class_name="d-flex justify-content-center",
+            ),
+        )
     ],
         fluid=True,
     )],
@@ -794,9 +796,10 @@ def action_load_button(n, filename, save_path, epoch_len, sample_fr, channel_lis
 
 # open browser
 #chrome_options = Options()
-#chrome_options.add_argument("--kiosk")
+# chrome_options.add_argument("--kiosk")
 #driver = webdriver.Chrome(chrome_options=chrome_options)
-#driver.get('http://localhost:8050/')
+# driver.get('http://localhost:8050/')
+
 
 @app.callback(
     Output("save-button", "children"),
