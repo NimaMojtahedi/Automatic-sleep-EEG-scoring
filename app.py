@@ -191,9 +191,8 @@ navbar = dbc.NavbarSimple(
                             is_open=False,
                             backdrop='static',
                             scrollable=True,
-                            placement='top',
-                            style={
-                                'title-color': '#463d3b', 'background': 'rgba(224, 236, 240, 0.2)', 'backdrop-filter': 'blur(10px)'}
+                            placement='bottom',
+                            style={'title-color': '#463d3b', 'background': 'rgba(224, 236, 240, 0.2)', 'backdrop-filter': 'blur(10px)'}
                         ),
                     ]
                 ), width="auto"),
@@ -302,6 +301,20 @@ inputbar = dbc.Nav(children=[
     fill=True,
 )
 
+sliderbar = dbc.Container(children=[
+                dbc.Row(
+                    dcc.Slider(
+                        id='epoch-sliderbar',
+                        min=1,
+                        max=10,
+                        step=1,
+                        value=1,
+                        tooltip={"placement": "top", "always_visible": True}
+                        )
+                    )
+            ],
+            fluid=True,
+)
 
 def plot_traces(traces, s_fr=1):
 
@@ -492,6 +505,7 @@ lower_row_right = dbc.Container(dbc.Row([
 
 # lower row
 lower_row = html.Div(dbc.NavbarSimple(html.Div(children=[
+    sliderbar,
     dbc.Container(children=[html.H4("Analytics", id="lower-bar",
                                     style={"font-weight": "600", "padding-top": "10px"}),
                             html.Br()],
@@ -532,7 +546,9 @@ app.layout = dbc.Container(
      Output("null_epoch", "value"),
      Output("null_epoch_act", "value"),
      Output("plus-one_epoch", "value"),
-     Output("scoring-labels", "data")],
+     Output("scoring-labels", "data"),
+     Output("epoch-sliderbar", "value"),
+     Output("epoch-sliderbar", "max")],
 
     [Input("keyboard", "keydown"),
      Input("keyboard", "n_keydowns"),
@@ -543,9 +559,10 @@ app.layout = dbc.Container(
      Input("input-file-default-info", "data"),
      Input("import-offcanvas", "is_open"),
      Input("null_epoch_act", "value"),
-     Input("scoring-labels", "data")]
+     Input("scoring-labels", "data"),
+     [Input('epoch-sliderbar', 'value')]]
 )
-def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sample_fr, input_default, off_canvas, score_value, score_storage):
+def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sample_fr, input_default, off_canvas, score_value, score_storage, slider_value):
 
     file_exist = False
     if not save_path is None:
@@ -567,6 +584,14 @@ def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sampl
     if not score_storage is None:
         score_storage = pd.read_json(score_storage)
         print("score at the beginning", type(score_storage), score_storage)
+    
+
+    # upadte frigures with sliderbar
+    if (slider_value != epoch_index):
+        score_storage = pd.DataFrame([
+            {epoch_index: slider_value}])
+            
+
 
     # It is important False off_canvas
     if n_keydowns and file_exist and not off_canvas:
@@ -578,6 +603,8 @@ def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sampl
         else:
             max_nr_epochs = int(max_nr_epochs)
 
+        max_sliderbar = max_nr_epochs
+        # marks_slidebar = {i: str(i) for i in range(1, max_sliderbar, int(max_sliderbar/10))}
         print("Epoch index at the beginning", epoch_index)
 
         # update figures with only left/right arrow keys
@@ -591,6 +618,9 @@ def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sampl
             elif (event["key"] == "ArrowLeft"):
                 if epoch_index > 0:
                     epoch_index -= 1
+            
+            slider_value = epoch_index
+                    
 
         # update figures with score labels
         if score_value == 1 or score_value == 2 or score_value == 3:
@@ -605,6 +635,9 @@ def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sampl
 
             if epoch_index < max_nr_epochs:
                 epoch_index += 1
+
+            slider_value = epoch_index
+
 
         # read data batch from disk / check if save_path exist
         df_mid = pd.read_json(os.path.join(
@@ -668,10 +701,12 @@ def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sampl
         if not score_storage is None:
             # pdb.set_trace()
             score_storage = score_storage.to_json()
+        
+        
 
-        return epoch_index, event, fig_traces, ps_hist_fig, epoch_minus_one_label, null_score_label, "", epoch_plus_one_label, score_storage
+        return epoch_index, event, fig_traces, ps_hist_fig, epoch_minus_one_label, null_score_label, "", epoch_plus_one_label, score_storage, slider_value, max_sliderbar
 
-    return json.dumps(0), None, plot_traces(np.zeros((1000, 1))), get_hists([np.zeros((1000, 1)), np.zeros((1000, 1))]), "", "", "", "", None
+    return json.dumps(0), None, plot_traces(np.zeros((1000, 1))), get_hists([np.zeros((1000, 1)), np.zeros((1000, 1))]), "", "", "", "", None, None, None
 
 
 # collapse callback
@@ -749,6 +784,8 @@ def toggle_import_offcanvas(n1, is_open):
         # button canvas, input-data-path, save-path, channel name, save-data-header
         return not is_open, filename, save_path, channel_children, data_header.to_json()
     return is_open, None, None, "No Input Channels", None
+
+
 
 
 @ app.callback(
