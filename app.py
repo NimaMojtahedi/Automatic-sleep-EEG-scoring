@@ -113,9 +113,8 @@ navbar = dbc.NavbarSimple(
     dbc.Container(
         dbc.Row(
             [
-                dbc.Col(html.A(html.Img(src=University_Logo, height="40px"),
-                        href="http://www.physiologie2.uni-tuebingen.de/", target="_blank"), width="auto"),
-                dbc.Col(html.H1("Sleezy", style={
+                
+                dbc.Col(html.H1("Sleezy!", style={'margin-left': '100px',
                         'color': '#003D7F', 'fontSize': 35})),
 
 
@@ -197,17 +196,12 @@ navbar = dbc.NavbarSimple(
                         ),
                     ]
                 ), width="auto"),
-
                 dbc.Col(dbc.Button("About Us", id="about-us-button", size="sm"),
-                        width="auto"),
+                        width="auto", style={'margin-left': '300px'}),
                 dbc.Col(dbc.Button("Help", id="help-button",
                         size="sm"), width="auto"),
-                dbc.Col(dbc.NavbarToggler(
-                    id="navbar-toggler", n_clicks=0), width="auto"),
-                dbc.Col(dbc.Collapse(dbc.Input(type="search", placeholder="Search", size="sm"),
-                        id="navbar-collapse", is_open=True), width="auto"),
-                dbc.Col(dbc.Button("Search epoch", size="sm",
-                        n_clicks=0, color="dark"), width="auto")
+                dbc.Col(html.A(html.Img(src=University_Logo, height="40px"),
+                        href="http://www.physiologie2.uni-tuebingen.de/", target="_blank"), width="auto"),
             ],
             align="center",
             justify="center",
@@ -223,6 +217,7 @@ navbar = dbc.NavbarSimple(
     className="mb-3",
 )
 
+
 inputbar = dbc.Nav(children=[
     dbc.Container(children=[
         dbc.Row(
@@ -237,8 +232,9 @@ inputbar = dbc.Nav(children=[
                                     id="minus-one_epoch",
                                     placeholder="",
                                     disabled=True,
-                                    style={'width': '100px',
+                                    style={'width': '80px',
                                            'text-align': 'center'},
+                                    size='sm'
                                 ),
                             ],
                     class_name="d-flex justify-content-center",
@@ -253,8 +249,9 @@ inputbar = dbc.Nav(children=[
                             id="null_epoch",
                             placeholder="",
                             disabled=True,
-                            style={'width': '100px',
+                            style={'width': '80px',
                                    'text-align': 'center'},
+                        size='sm'
                         ),
                     ],
                     class_name="d-flex justify-content-center",
@@ -270,8 +267,9 @@ inputbar = dbc.Nav(children=[
                             id="plus-one_epoch",
                             placeholder="",
                             disabled=True,
-                            style={'width': '100px',
+                            style={'width': '80px',
                                    'text-align': 'center'},
+                        size='sm'
                         ),
                     ],
                     class_name="d-flex justify-content-center",
@@ -289,18 +287,43 @@ inputbar = dbc.Nav(children=[
                         placeholder="",
                         autocomplete="off",
                         style={'border': '2px solid', 'border-color': '#003D7F',
-                               'width': '100px', 'text-align': 'center', 'hoverinfo': 'none'},
+                               'width': '80px', 'text-align': 'center', 'hoverinfo': 'none'},
+                        size='sm'
 
                     ),
                 ],
                 class_name="d-flex justify-content-center",
             ),
-        )
+        ),
     ],
-        fluid=True,
+        fluid=True
     )],
     fill=True,
+    pills=True,
+    navbar=True,
+    class_name="sticky-top",
 )
+
+graph_bar = dbc.Nav(dbc.Container(dbc.Row(
+                 dcc.Graph(id="ch", responsive=True, config={
+                                                            'displayModeBar': True,
+                                                            'displaylogo': False,                                       
+                                                            'modeBarButtonsToRemove': ['zoomin', 'zoomout', 'zoom', 'pan'],
+                                                            'modeBarButtonsToAdd':['drawline', 'drawopenpath', 'eraseshape'],
+                                                            'scrollZoom': True,
+                                                            'editable': False,
+                                                            'showLink':False,
+                                                            'toImageButtonOptions': {
+                                                                'format': 'png',
+                                                                'filename': 'EEG-Plot',
+                                                                'width': 3200,
+                                                                'scale': 1,
+                                                                }
+                                                        })
+                ),
+            class_name="fixed-bottom",
+            style={"padding":"25px","margin-bottom":"300px","width": "100%", "height": "620px"},
+            fluid=True))
 
 sliderbar = dbc.Container(children=[
     dbc.Row(
@@ -316,6 +339,7 @@ sliderbar = dbc.Container(children=[
 ],
     fluid=True,
 )
+
 
 
 def plot_traces(traces, s_fr=1):
@@ -344,9 +368,10 @@ def plot_traces(traces, s_fr=1):
 
     # changing px.line(y=trace)["data"][0] to go.Scatter(y=trace, mode="lines")
     # increase speed by factor of ~5
+    
     for i in range(nr_ch):
         fig.add_trace(go.Scatter(x=x_axis, y=traces[:, i], mode="lines", line=dict(
-            color='#003D7F', width=1)), row=i+1, col=1)
+            color='#003D7F', width=1), hoverinfo='skip'), row=i+1, col=1)
 
     for i in range(nr_ch):
 
@@ -361,10 +386,11 @@ def plot_traces(traces, s_fr=1):
         fig.add_trace(split_line1, row=i+1, col=1)
         fig.add_trace(split_line2, row=i+1, col=1)
 
-    fig.update_layout(margin=dict(l=0, r=0, t=1, b=1),
+        fig.update_layout(margin=dict(l=0, r=0, t=1, b=1),
                       paper_bgcolor='rgba(0,0,0,0)',
                       plot_bgcolor='rgba(0,0,0,0)',
-                      showlegend=False
+                      showlegend=False,
+                      xaxis_fixedrange = True,
                       )
     return fig
 
@@ -376,21 +402,20 @@ def get_acc_plot(a=0.5):
 
     # this will change with real data
     df = pd.DataFrame(
-        {"Train": np.exp(-1/np.arange(2, 10, .1)) + a*2,
-         "Val":  np.exp(-1/np.arange(2, 10, .1)) + a})
+        {"Training": np.exp(-1/np.arange(2, 10, .1)) + a*2,
+         "Validation":  np.exp(-1/np.arange(2, 10, .1)) + a})
 
     # start plotting
-    fig = px.line(df, y=["Val", "Train"])
+    fig = px.line(df, y=["Validation", "Training"])
     fig.update_layout(paper_bgcolor='rgba(0,0,0,0)',
                       plot_bgcolor='rgba(0,0,0,0)',
-                      margin=dict(l=1, r=1, t=1, b=1),
-                      legend=dict(
-                          yanchor="bottom",
-                          y=0.1,
-                          xanchor="left",
-                          x=0.45),
-                      xaxis={"showgrid": False, "showline": True},
-                      yaxis={"showgrid": False, "showline": True}
+                      margin=dict(l=0, r=0, t=0, b=0),
+                      font={'size':10,'color':'#003D7F'},
+                      xaxis={"automargin":True,"title_standoff":0, "gridcolor":'rgba(0,61,127,0.2)',"linewidth":2, "linecolor": '#003D7F',"tickfont": {'size':12, 'color': '#003D7F'}, "title": "Iterations","showgrid": True, "showline": True},
+                      yaxis={"automargin":True,"title_standoff":0, "gridcolor":'rgba(0,61,127,0.2)',"linewidth":2, "linecolor": '#003D7F',"tickfont": {'size':12, 'color': '#003D7F'}, "title": "Accuracy in %", "showgrid": True, "showline": True},
+                      xaxis_fixedrange = True,
+                      yaxis_fixedrange = True,
+                      showlegend=False,
                       )
 
     return fig
@@ -398,7 +423,6 @@ def get_acc_plot(a=0.5):
 
 # spectrum & histograms
 def get_hists(data):
-
     # list of 2 (power spectrums(by number of channels) and histograms(same))
     # first powerspectrum and then histogram
 
@@ -409,23 +433,34 @@ def get_hists(data):
     # check if it is True
     assert spectrums.shape[1] == histos.shape[1]
 
-    fig = make_subplots(rows=2, cols=nr_ch, shared_yaxes=True,
-                        print_grid=False, vertical_spacing=0.25, horizontal_spacing=0.05,
-                        subplot_titles=("Power Spectrums", "", "", "Amplitude Histograms", "", ""))
-
+    fig = make_subplots(rows=1, cols=nr_ch*2,
+                        print_grid=False, vertical_spacing=0.0, horizontal_spacing=0.03,
+                        #subplot_titles=("Power Spectrums", "", "", "Amplitude Histograms", "", "")
+                        )
+    #my_layout=dict(xaxis={"automargin":True,"title_standoff":0, "gridcolor":'rgba(0,61,127,0.2)',"linewidth":2, "linecolor": '#003D7F',"tickfont": {'size':12, 'color': '#003D7F'}, "title": "Iterations","showgrid": True, "showline": True})
     for i in range(nr_ch):
         # at the moment x is fixed to 30 Hz 120 = 30 * 4 (always 4)
         fig.add_trace(go.Scatter(x=np.linspace(0, 30, 120), y=spectrums[:, i], mode="lines", line=dict(
-            color='black', width=1)), row=1, col=i+1)
+            color='black'), hoverinfo='skip'), row=1, col=i+1)
         fig.add_trace(go.Histogram(x=histos[:, i], marker_color='LightSkyBlue',
-                                   opacity=0.75, histnorm="probability"), row=2, col=i+1)
+            opacity=0.75, histnorm="probability", hoverinfo='skip'), row=1, col=nr_ch+i+1)
 
     # in case it is necessary for histograms xbins=dict(start=-3.0,end=4,size=0.5)
-    fig.update_layout(margin=dict(l=1, r=1, t=20, b=1),
-                      paper_bgcolor='rgba(0,0,0,0)',
-                      plot_bgcolor='rgba(0,0,0,0)', bargap=0.25,
-                      showlegend=False
-                      )
+    fig.update_layout(margin=dict(l=1, r=1, t=1, b=1),
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        plot_bgcolor='rgba(0,0,0,0)', bargap=0.25,
+                        font={'size':10,'color':'#003D7F'},
+                        xaxis={"automargin":True,"title_standoff":0, "gridcolor":'rgba(0,61,127,0.2)',"linewidth":2, "linecolor": '#003D7F',"tickfont": {'size':12, 'color': '#003D7F'}, "title": "Iterations","showgrid": True, "showline": True},
+                        yaxis={"automargin":True,"title_standoff":0, "gridcolor":'rgba(0,61,127,0.2)',"linewidth":2, "linecolor": '#003D7F',"tickfont": {'size':12, 'color': '#003D7F'}, "title": "Accuracy in %", "showgrid": True, "showline": True},
+                        showlegend=False,
+                        xaxis_fixedrange = True,
+                        yaxis_fixedrange = True,
+                        )
+
+    fig.update_yaxes(fixedrange = True, gridcolor='rgba(0,61,127,0.2)', linewidth=2, linecolor= '#003D7F', tickfont={'size':12, 'color': '#003D7F'}, showgrid=True, showline=True)
+    fig.update_xaxes(fixedrange = True, gridcolor='rgba(0,61,127,0.2)', linewidth=2, linecolor= '#003D7F', tickfont={'size':12, 'color': '#003D7F'}, showgrid=True, showline=True)
+
+    
 
     return fig
 
@@ -471,59 +506,92 @@ app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SPACELAB])
 Storage = html.Div(dcc.Store(id='storage_add', storage_type='local'))
 
 
-# Graph div
-trace_graphs = html.Div(children=[
-    dcc.Graph(id="ch", responsive=True)
-])
+# background for the lower row
+backgrd = html.Div(
+                dbc.Container(style={"padding":"0","margin":"0","width": "100%", "height": "300px", "border": "0px solid #308fe3", "background-image": "url(https://previews.123rf.com/images/gonin/gonin1710/gonin171000004/87977156-blue-white-gradient-hexagons-turned-abstract-background-with-geometrical-elements-modern-3d-renderin.jpg)",
+                        'opacity': '0.15', 'filter': 'blur(20px)', "background-size":"100% 100%"},
+                        fluid=True,
+                        class_name="fixed-bottom",
+                ))
 
-# lower Row (contains all learning graphs and informations + spectrums and histograms)
-# confusion matrix table
-# creating df which mimics sklearn output
-table = dbc.Container(dbc.Col(dbc.Table.from_dataframe(
-    get_confusion_mat(), striped=False, bordered=False, hover=True, index=True, responsive=True, size="md"),
-    style={"width": "20vw", "height": "25vh"})
-)
+# lower row (contains all learning graphs and informations + spectrums and histograms)
+lower_row = dbc.Nav(dbc.Container(children=[
+                sliderbar,
+                dbc.Container(dbc.Row(children=[html.H4("Analytics", id="lower-bar-title",
+                                style={"font-weight": "600", "padding-top": "0px"}),
+                            ]),
+                    fluid=True,
+                    ),
 
-# accuracy graph
-acc_graph = dcc.Graph(id="accuracy", figure=get_acc_plot(
-), responsive=True, style={"width": "20vw", "height": "25vh"})
+                html.Div([dbc.Row([
+                                dbc.Col(html.H6("Confusion Matrix",
+                                style={"font-weight": "600", "margin-left": "15px"}), width={"size": 2}),
+                                dbc.Col(html.H6("AI Acuuracy",
+                                style={"font-weight": "600", "margin-left": "0px"}), width={"size": 1, "offset": 0}),
+                                dbc.Col(html.H6("Power Spectrums",
+                                style={"font-weight": "600", "margin-left": "65px"}), width={"size": 2, "offset": 0}),
+                                dbc.Col(html.H6("Amplitude Histograms",
+                                style={"font-weight": "600", "margin-left": "120px"}), width={"size": 3, "offset": 2}),
+                                ]),
+                ]),
 
+                dbc.Nav(dbc.Container(dbc.Row([
 
-# hist graphs
-hist_graph = dcc.Graph(id="hist-graphs",
-                       responsive=True, style={"width": "50vw", "height": "25vh"})
+                        dbc.Container(dbc.Col(dbc.Table.from_dataframe(
+                            get_confusion_mat(), striped=False, bordered=False, hover=True, index=True, responsive=True, size="sm", color= "info", style={'color': '#003D7F','font-size':14})),
+                        style={"width": "220px", "height": "150px", "padding":"0px"}),
 
-# lower row left-side
-lower_row_left = dbc.Container(dbc.Row([
-    dbc.Col(table),
-    dbc.Col(acc_graph),
-    dbc.Col(dbc.Card("Train Info", id="train-info"))
-], style={"display": "flex"}, class_name="g-4"), fluid=True)
+                        dbc.Container(dbc.Col(dcc.Graph(id="accuracy", figure=get_acc_plot(),
+                            responsive=True, style={"width": "200px", "height": "150px"}, config={
+                                                            'displayModeBar': False,
+                                                            'displaylogo': False,                                       
+                                                            'scrollZoom': False,
+                                                            'editable': False,
+                                                            'showLink':False,
+                                                        })),
+                            style={"width": "200px", "height": "150px"}),
 
-# lower row right-side
-lower_row_right = dbc.Container(dbc.Row([
-    hist_graph
-]), fluid=True)
+                        dbc.Container(dbc.Col(dcc.Graph(id="hist-graphs", responsive=True,
+                        style={"width": "1350px", "height": "130px"}, config={
+                                                            'displayModeBar': True,
+                                                            'modeBarButtonsToRemove': ['zoomin', 'zoomout', 'zoom', 'pan', 'select', 'lasso2d', 'autoscale'],
+                                                            'displaylogo': False,                                       
+                                                            'scrollZoom': False,
+                                                            'editable': False,
+                                                            'showLink':False,
+                                                            'toImageButtonOptions': {
+                                                                'format': 'png',
+                                                                'filename': 'PowerSpect_Histograms',
+                                                                'width': 1600,
+                                                                'scale': 1,
+                                                                }})),
+                            style={"width": "1350px", "height": "130px"})
+                    ],
+                
+                ),
+                fluid=True,
+                style={"margin-top": "0px"}
+                ),
+                fill=True),
 
-# lower row
-lower_row = html.Div(dbc.NavbarSimple(html.Div(children=[
-    sliderbar,
-    dbc.Container(children=[html.H4("Analytics", id="lower-bar",
-                                    style={"font-weight": "600", "padding-top": "10px"}),
-                            html.Br()],
-                  fluid=True,
-                  style={"border": "3px solid #308fe3", "backgroundColor": "#8ac6fb"}),
-    dbc.Container(dbc.Row([
-        dbc.Col(lower_row_left, width=7),
-        dbc.Col(lower_row_right, width=5)
-    ], class_name="g-4"), fluid=True, style={"backgroundColor": "#Cee7ff"})
-]),
-    links_left=True,
-    fluid=True,
-    fixed="bottom",
-    style={"border": "0px"},
-))
-
+                dbc.Container(dbc.Row(
+                    dbc.Input(placeholder="  Training information is displayed here", id="train-info", disabled=True, size='sm',
+                    style={"padding":"0","margin":"0"})),
+                fluid=True,
+                class_name="g-0 mb-0 p-0",
+                style={"margin-top": "0px"}
+                    )
+                ],
+        
+        fluid=True,
+        style={"border": "0px", "width": "100%", "height": "300px"},
+    ),
+    fill=True,
+    class_name="fixed-bottom",
+    #links_left=True,
+    #color= 'rgba(224, 236, 240, 0.3)',
+    #fixed="bottom",
+    )
 
 # detecting keyboard keys
 my_keyboard = html.Div(Keyboard(id="keyboard"))
@@ -531,7 +599,7 @@ my_keyboard = html.Div(Keyboard(id="keyboard"))
 
 # define app layout using dbc container
 app.layout = dbc.Container(
-    html.Div([all_storage, my_keyboard, navbar, inputbar, trace_graphs, lower_row]), fluid=True)
+    html.Div([all_storage, my_keyboard, navbar, inputbar, graph_bar, backgrd, lower_row]), fluid=True)
 
 
 # all callBacks
@@ -708,19 +776,6 @@ def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sampl
 
     return json.dumps(0), None, plot_traces(np.zeros((1000, 1))), get_hists([np.zeros((1000, 1)), np.zeros((1000, 1))]), "", "", "", "", None, None, None, None
 
-
-# collapse callback
-@app.callback(
-    Output("navbar-collapse", "is_open"),
-    [Input("navbar-toggler", "n_clicks")],
-    [State("navbar-collapse", "is_open")],
-
-
-)
-def toggle_navbar_collapse(n, is_open):
-    if n:
-        return not is_open
-    return is_open
 
 
 # This part has to merge to above callback after fixing issue
