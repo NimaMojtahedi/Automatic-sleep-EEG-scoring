@@ -151,6 +151,8 @@ navbar = dbc.NavbarSimple(
                             html.Div(define_channels(), id="channel_def_div"),
                             dbc.Row(dbc.Button("Load", id="load_button", size="sm"),
                                     class_name="mt-3"),
+                            
+                            dcc.Loading(id="loading-state", children=html.Div(id="loading-output")),
 
                         ],
                             id="import-offcanvas",
@@ -412,7 +414,7 @@ def get_acc_plot(a=0.5):
                       margin=dict(l=0, r=0, t=0, b=0),
                       font={'size':10,'color':'#003D7F'},
                       xaxis={"automargin":True,"title_standoff":0, "gridcolor":'rgba(0,61,127,0.2)',"linewidth":2, "linecolor": '#003D7F',"tickfont": {'size':12, 'color': '#003D7F'}, "title": "Iterations","showgrid": True, "showline": True},
-                      yaxis={"automargin":True,"title_standoff":0, "gridcolor":'rgba(0,61,127,0.2)',"linewidth":2, "linecolor": '#003D7F',"tickfont": {'size':12, 'color': '#003D7F'}, "title": "Accuracy in %", "showgrid": True, "showline": True},
+                      yaxis={"automargin":True,"title_standoff":0, "gridcolor":'rgba(0,61,127,0.2)',"linewidth":2, "linecolor": '#003D7F',"tickfont": {'size':12, 'color': '#003D7F'}, "title": "Accuracy (%)", "showgrid": True, "showline": True},
                       xaxis_fixedrange = True,
                       yaxis_fixedrange = True,
                       showlegend=False,
@@ -450,8 +452,8 @@ def get_hists(data):
                         paper_bgcolor='rgba(0,0,0,0)',
                         plot_bgcolor='rgba(0,0,0,0)', bargap=0.25,
                         font={'size':10,'color':'#003D7F'},
-                        xaxis={"automargin":True,"title_standoff":0, "gridcolor":'rgba(0,61,127,0.2)',"linewidth":2, "linecolor": '#003D7F',"tickfont": {'size':12, 'color': '#003D7F'}, "title": "Iterations","showgrid": True, "showline": True},
-                        yaxis={"automargin":True,"title_standoff":0, "gridcolor":'rgba(0,61,127,0.2)',"linewidth":2, "linecolor": '#003D7F',"tickfont": {'size':12, 'color': '#003D7F'}, "title": "Accuracy in %", "showgrid": True, "showline": True},
+                        xaxis={"automargin":True,"title_standoff":0, "gridcolor":'rgba(0,61,127,0.2)',"linewidth":2, "linecolor": '#003D7F',"tickfont": {'size':12, 'color': '#003D7F'}, "title": "Frequency (Hz)","showgrid": True, "showline": True},
+                        yaxis={"automargin":True,"title_standoff":0, "gridcolor":'rgba(0,61,127,0.2)',"linewidth":2, "linecolor": '#003D7F',"tickfont": {'size':12, 'color': '#003D7F'}, "title": "Spectral density", "showgrid": True, "showline": True},
                         showlegend=False,
                         xaxis_fixedrange = True,
                         yaxis_fixedrange = True,
@@ -575,7 +577,7 @@ lower_row = dbc.Nav(dbc.Container(children=[
                 fill=True),
 
                 dbc.Container(dbc.Row(
-                    dbc.Input(placeholder="  Training information is displayed here", id="train-info", disabled=True, size='sm',
+                    dbc.Input(placeholder="  Training information", id="train-info", disabled=True, size='sm',
                     style={"padding":"0","margin":"0"})),
                 fluid=True,
                 class_name="g-0 mb-0 p-0",
@@ -859,7 +861,11 @@ def get_channel_user_selection(channels):
 
 @app.callback(
     [Output("load_button", "children"),
-     Output("max-possible-epochs", "data")],
+     Output("max-possible-epochs", "data"),
+     Output("loading-output", "children"),
+     Output("load_button", "disabled"),
+     Output("sampling_fr_input", "disabled"),
+     Output("epoch-length-input", "disabled")],
     [Input("load_button", "n_clicks"),
      Input("input-file-loc", "data"),
      Input("save-path", "data"),
@@ -884,9 +890,9 @@ def action_load_button(n, filename, save_path, epoch_len, sample_fr, channel_lis
         print("Finished data loading")
         print(f"Max epochs: {max_epoch_nr}")
         # [dbc.Spinner(size="sm"), " Loading..."]
-        return "Loaded", json.dumps(max_epoch_nr)
+        return "Loaded", json.dumps(max_epoch_nr), "", True, True, True
     else:
-        return "Load", None
+        return "Load", None, "", False, False, False
 
 # open browser
 #chrome_options = Options()
