@@ -873,16 +873,44 @@ def save_button(n_clicks, input_data_loc, scoring_results):
 # training
 @app.callback(
     Output("accuracy", "figure"),
-    Input("epoch-index", "data")
+    [Input("epoch-index", "data"),
+     Input("scoring-labels", "data"),
+     Input("save-path", "data")]
 )
-def train_indicator(epoch_index):
+def train_indicator(epoch_index, score_storage, save_path):
     if not epoch_index is None:
         epoch_index = int(epoch_index)
         if (epoch_index % 10 == 0) and (not epoch_index == 0):
             # do 1 round of training
             print("inside train", epoch_index)
-            time.sleep(10)
-            # there is 1 epoch difference between this callback and keyboard callback
+
+            # check if there is scoring available
+            if (not score_storage is None) and len(score_storage.values) > 5:
+                score_storage = pd.read_json(score_storage)
+
+                # check recorded class distribution
+                rec_class = np.unique(score_storage.values)
+
+                # concatinate data
+                for epoch in score_storage.keys():
+                    try:
+                        df_mid = []
+                        df_mid = pd.read_json(os.path.join(
+                            save_path, str(epoch_index) + ".json"))
+                        ps_mid = np.stack(df_mid["spectrums"]).T
+                        hist_mid = np.stack(df_mid["histograms"]).T
+                    except:
+                        print(
+                            f"Dataset for epoch #{epoch} is not found. Ignoring from this epoch.")
+
+                # split train test
+
+                #
+            else:
+                print(
+                    "Score storage is empty or doesn't satisfy proper epoch number. Training canceled")
+                return get_acc_plot(a=-10)
+
             return get_acc_plot(a=2)
     return get_acc_plot()
 
