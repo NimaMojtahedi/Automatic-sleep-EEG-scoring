@@ -5,6 +5,7 @@ from datetime import time
 from ntpath import join
 from types import LambdaType
 from dash_bootstrap_components._components.InputGroup import InputGroup
+from dash.exceptions import PreventUpdate
 import pandas as pd
 import numpy as np
 from sklearn.metrics import confusion_matrix
@@ -87,25 +88,25 @@ config_menu_items = html.Div(
 
 
 # define channels
-def define_channels(channel_name=["No Channel in Data"]):
-
+def define_channels(channel_name=["No Channel in Data"], disabled = False, value=[]):
     options = []
     if isinstance(channel_name[0], list):
         channel_name = channel_name[0]
 
     for i in channel_name:
-        options.append({'label': i, 'value': i})
+        options.append({'label': i, 'value': i, 'disabled': disabled})
 
     channels = dbc.Checklist(
         id="channel_checklist",
         options=options,
-        value=[],
+        value=value,
         switch=True,
         inputStyle={"margin-right": "10px"},
         labelStyle={'display': 'block'},
         style={'color': '#463d3b'}
     )
     return channels
+    
 
 
 # navigation toolbar with logo, software title and a button
@@ -148,11 +149,13 @@ navbar = dbc.NavbarSimple(
                                 style={'color': '#463d3b'}
                             ),
 
-                            html.Div(define_channels(), id="channel_def_div"),
-                            dbc.Row(dbc.Button("Load", id="load_button", size="sm"),
+                            html.Div(children=define_channels(), id="channel_def_div"),
+                            dbc.Row(children=[dbc.Button("Load", id="load_button", size="sm", n_clicks=0),
+                                    html.Div(children=False, id="second_execution")],
                                     class_name="mt-3"),
-                            
+                            html.Br(),
                             dcc.Loading(id="loading-state", children=html.Div(id="loading-output")),
+                            dcc.Interval( id='internal-trigger', interval=100, n_intervals=0, max_intervals=0),
 
                         ],
                             id="import-offcanvas",
@@ -541,17 +544,17 @@ lower_row = dbc.Nav(dbc.Container(children=[
 
                         dbc.Container(dbc.Col(dbc.Table.from_dataframe(
                             get_confusion_mat(), striped=False, bordered=False, hover=True, index=True, responsive=True, size="sm", color= "info", style={'color': '#003D7F','font-size':14})),
-                        style={"width": "220px", "height": "150px", "padding":"0px"}),
+                        style={"width": "220px", "height": "142px", "padding":"0px"}),
 
                         dbc.Container(dbc.Col(dcc.Graph(id="accuracy", figure=get_acc_plot(),
-                            responsive=True, style={"width": "200px", "height": "150px"}, config={
+                            responsive=True, style={"width": "200px", "height": "130px"}, config={
                                                             'displayModeBar': False,
                                                             'displaylogo': False,                                       
                                                             'scrollZoom': False,
                                                             'editable': False,
                                                             'showLink':False,
                                                         })),
-                            style={"width": "200px", "height": "150px"}),
+                            style={"width": "200px", "height": "130px"}),
 
                         dbc.Container(dbc.Col(dcc.Graph(id="hist-graphs", responsive=True,
                         style={"width": "1350px", "height": "130px"}, config={
@@ -580,9 +583,7 @@ lower_row = dbc.Nav(dbc.Container(children=[
                     dbc.Input(placeholder="  Training information", id="train-info", disabled=True, size='sm',
                     style={"padding":"0","margin":"0"})),
                 fluid=True,
-                class_name="g-0 mb-0 p-0",
-                style={"margin-top": "0px"}
-                    )
+                class_name="g-0 mb-0 p-0",                    )
                 ],
         
         fluid=True,
@@ -784,7 +785,7 @@ def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sampl
 # reading user input for epoch len (custom value)
 @app.callback(
     Output("user-epoch-length", "data"),
-    Input("epoch-length-input", "value")
+    [Input("epoch-length-input", "value")]
 )
 def user_custom_epoch_length(value):
     return value
@@ -802,20 +803,74 @@ def toggle_adv_param_offcanvas(n, is_open):
     return is_open
 
 
-# channels loading callback
+# secondary execution call-back
+
+    
+
+
+# channels importing and loading callback
 @ app.callback(
     [Output("import-offcanvas", "is_open"),
      Output("input-file-loc", "data"),
      Output("save-path", "data"),
      Output("channel_def_div", "children"),
-     Output("input-file-default-info", "data")],
+     Output("input-file-default-info", "data"),
+     Output("load_button", "children"),
+     Output("max-possible-epochs", "data"),
+     Output("loading-output", "children"),
+     Output("load_button", "disabled"),
+     Output("sampling_fr_input", "disabled"),
+     Output("epoch-length-input", "disabled"),
+     Output("import-offcanvas-button", "n_clicks"),
+     Output("load_button", "n_clicks"),
+     Output("second_execution", "children"),
+     Output("internal-trigger", "max_intervals"),
+     Output("internal-trigger", "n_intervals")
+     ],
 
-    Input("import-offcanvas-button", "n_clicks"),
+    [Input("import-offcanvas-button", "n_clicks"),
+     Input("load_button", "n_clicks"),
+     Input("input-file-loc", "data"),
+     Input("save-path", "data"),
+     Input("second_execution", "children"),
+     Input("internal-trigger", "n_intervals")],
 
-    [State("import-offcanvas", "is_open")],
+     [State("user-epoch-length", "data"),
+     State("user-sampling-frequency", "data"),
+     State("user-selected-channels", "data"),]
 )
-def toggle_import_offcanvas(n1, is_open):
-    if n1:
+
+def toggle_import_load_offcanvas(n1, n2, filename, save_path, secondary, self_trigger, epoch_len, sample_fr, channel_list):
+    
+    if secondary == True and self_trigger == 1:
+        secondary = False
+        print('I an in secondary n2')
+        print(f"\n\nfilename: {filename} \nsavepath: {save_path} \nepoch_len:{epoch_len} \nsampling_fr:{sample_fr} \n\n")
+        max_epoch_nr = process_input_data(path_to_file=filename,
+                                        path_to_save=save_path,
+                                        start_index=0,
+                                        end_index=-1,
+                                        epoch_len=int(epoch_len),
+                                        fr=int(sample_fr),
+                                        channel_list=json.loads(
+                                            channel_list),
+                                        return_result=False)
+        print("Finished data loading")
+        print(f"Max epochs: {max_epoch_nr}")
+        return False, filename, save_path, dash.no_update, dash.no_update, "Loaded Successfully!", json.dumps(max_epoch_nr), "", True, True, True, 0, 0, secondary, 0, 0
+    
+    elif n2:
+        print('I am in n2')
+        n2 = n2 - 1
+        data_header = read_data_header(filename)
+        channel_children = define_channels(
+            channel_name=data_header["channel_names"], disabled=True, value=channel_list)
+        secondary = True
+        return dash.no_update, dash.no_update, dash.no_update, channel_children, dash.no_update, "Loading...", dash.no_update, dash.no_update, True, True, True, 0, 0, secondary, 1, 0
+
+    elif n1 != n2:
+        print('I am in n1')
+        n1 = n1 - 1
         # reading only data header and updating Import button configs
         subprocess.run("python import_path.py", shell=True)
 
@@ -832,20 +887,23 @@ def toggle_import_offcanvas(n1, is_open):
 
         # I need to run the define_channels function
         channel_children = define_channels(
-            channel_name=data_header["channel_names"])
+            channel_name=data_header["channel_names"], disabled=False, value=[])
 
         # save header file to disk
         data_uploader(data=data_header,
                       path=os.path.join(save_path, "header_data.json"))
 
         # button canvas, input-data-path, save-path, channel name, save-data-header
-        return not is_open, filename, save_path, channel_children, data_header.to_json()
-    return is_open, None, None, "No Input Channels", None
+        return True, filename, save_path, channel_children, data_header.to_json(), "Load", None, dash.no_update, False, False, False, n1, n2, dash.no_update, dash.no_update, dash.no_update
+    
+    else:
+        print('I am in else')
+        raise PreventUpdate
 
 
 @ app.callback(
     Output("user-sampling-frequency", "data"),
-    Input("sampling_fr_input", "value"),
+    [Input("sampling_fr_input", "value")]
 )
 def handle_sample_fr_input(value):
     return value
@@ -853,46 +911,11 @@ def handle_sample_fr_input(value):
 
 @app.callback(
     Output("user-selected-channels", "data"),
-    Input("channel_checklist", "value")
+    [Input("channel_checklist", "value")]
 )
 def get_channel_user_selection(channels):
     return json.dumps(channels)
 
-
-@app.callback(
-    [Output("load_button", "children"),
-     Output("max-possible-epochs", "data"),
-     Output("loading-output", "children"),
-     Output("load_button", "disabled"),
-     Output("sampling_fr_input", "disabled"),
-     Output("epoch-length-input", "disabled")],
-    [Input("load_button", "n_clicks"),
-     Input("input-file-loc", "data"),
-     Input("save-path", "data"),
-     Input("user-epoch-length", "data"),
-     Input("user-sampling-frequency", "data"),
-     Input("user-selected-channels", "data")]
-)
-def action_load_button(n, filename, save_path, epoch_len, sample_fr, channel_list):
-
-    if n:
-        print(
-            f"\n\nfilename: {filename} \nsavepath: {save_path} \nepoch_len:{epoch_len} \nsampling_fr:{sample_fr} \n\n")
-        max_epoch_nr = process_input_data(path_to_file=filename,
-                                          path_to_save=save_path,
-                                          start_index=0,
-                                          end_index=-1,
-                                          epoch_len=int(epoch_len),
-                                          fr=int(sample_fr),
-                                          channel_list=json.loads(
-                                              channel_list),
-                                          return_result=False)
-        print("Finished data loading")
-        print(f"Max epochs: {max_epoch_nr}")
-        # [dbc.Spinner(size="sm"), " Loading..."]
-        return "Loaded", json.dumps(max_epoch_nr), "", True, True, True
-    else:
-        return "Load", None, "", False, False, False
 
 # open browser
 #chrome_options = Options()
