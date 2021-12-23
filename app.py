@@ -201,10 +201,9 @@ navbar = dbc.NavbarSimple(
                         ),
                     ]
                 ), width="auto"),
-                dbc.Col(dbc.Button("About Us", id="about-us-button", size="sm"),
+                dbc.Col(html.A(dbc.Button("About Us", id="about-us-button", size="sm"), href="http://www.physiologie2.uni-tuebingen.de/", target="_blank"),
                         width="auto", style={'margin-left': '300px'}),
-                dbc.Col(dbc.Button("Help", id="help-button",
-                        size="sm"), width="auto"),
+                dbc.Col(html.A(dbc.Button("Help", id="help-button", size="sm"), href="https://github.com/NimaMojtahedi/Automatic-sleep-EEG-scoring", target="_blank"), width="auto"),
                 dbc.Col(html.A(html.Img(src=University_Logo, height="40px"),
                         href="http://www.physiologie2.uni-tuebingen.de/", target="_blank"), width="auto"),
             ],
