@@ -13,11 +13,15 @@ import pdb
 import time
 import os
 import subprocess
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+from xgboost import XGBClassifier
 #from selenium import webdriver
 #from selenium.webdriver.chrome.options import Options
 
 # internal files and functions
 from utils import process_input_data, read_data_header
+from models import Classifier
 
 # dash library
 import dash
@@ -29,6 +33,7 @@ import dash_bootstrap_components as dbc
 from dash import Input, Output, State, html
 import plotly.express as px
 from plotly.subplots import make_subplots
+from dash.exceptions import PreventUpdate
 
 # dash extension
 from dash_extensions import Keyboard
@@ -72,7 +77,8 @@ all_storage = html.Div([dcc.Store(id="epoch-index"),  # get input from keyboard 
                         dcc.Store(id="max-possible-epochs"),
                         dcc.Store(id="scoring-labels"),
                         dcc.Store(id="slider-saved-value"),
-                        dcc.Store(id="res12")])
+                        dcc.Store(id="AI-accuracy"),
+                        dcc.Store(id="AI-trigger-params")])
 #####       #####       #####       #####       #####
 
 # config menu items
@@ -113,7 +119,7 @@ navbar = dbc.NavbarSimple(
     dbc.Container(
         dbc.Row(
             [
-                
+
                 dbc.Col(html.H1("Sleezy!", style={'margin-left': '100px',
                         'color': '#003D7F', 'fontSize': 35})),
 
@@ -151,8 +157,9 @@ navbar = dbc.NavbarSimple(
                             html.Div(define_channels(), id="channel_def_div"),
                             dbc.Row(dbc.Button("Load", id="load_button", size="sm"),
                                     class_name="mt-3"),
-                            
-                            dcc.Loading(id="loading-state", children=html.Div(id="loading-output")),
+
+                            dcc.Loading(id="loading-state",
+                                        children=html.Div(id="loading-output")),
 
                         ],
                             id="import-offcanvas",
@@ -253,7 +260,7 @@ inputbar = dbc.Nav(children=[
                             disabled=True,
                             style={'width': '80px',
                                    'text-align': 'center'},
-                        size='sm'
+                            size='sm'
                         ),
                     ],
                     class_name="d-flex justify-content-center",
@@ -271,7 +278,7 @@ inputbar = dbc.Nav(children=[
                             disabled=True,
                             style={'width': '80px',
                                    'text-align': 'center'},
-                        size='sm'
+                            size='sm'
                         ),
                     ],
                     class_name="d-flex justify-content-center",
@@ -307,25 +314,26 @@ inputbar = dbc.Nav(children=[
 )
 
 graph_bar = dbc.Nav(dbc.Container(dbc.Row(
-                 dcc.Graph(id="ch", responsive=True, config={
-                                                            'displayModeBar': True,
-                                                            'displaylogo': False,                                       
-                                                            'modeBarButtonsToRemove': ['zoomin', 'zoomout', 'zoom', 'pan'],
-                                                            'modeBarButtonsToAdd':['drawline', 'drawopenpath', 'eraseshape'],
-                                                            'scrollZoom': True,
-                                                            'editable': False,
-                                                            'showLink':False,
-                                                            'toImageButtonOptions': {
-                                                                'format': 'png',
-                                                                'filename': 'EEG-Plot',
-                                                                'width': 3200,
-                                                                'scale': 1,
-                                                                }
-                                                        })
-                ),
-            class_name="fixed-bottom",
-            style={"padding":"25px","margin-bottom":"300px","width": "100%", "height": "620px"},
-            fluid=True))
+    dcc.Graph(id="ch", responsive=True, config={
+        'displayModeBar': True,
+        'displaylogo': False,
+        'modeBarButtonsToRemove': ['zoomin', 'zoomout', 'zoom', 'pan'],
+        'modeBarButtonsToAdd': ['drawline', 'drawopenpath', 'eraseshape'],
+        'scrollZoom': True,
+        'editable': False,
+        'showLink': False,
+        'toImageButtonOptions': {
+            'format': 'png',
+            'filename': 'EEG-Plot',
+            'width': 3200,
+            'scale': 1,
+        }
+    })
+),
+    class_name="fixed-bottom",
+    style={"padding": "25px", "margin-bottom": "300px",
+           "width": "100%", "height": "620px"},
+    fluid=True))
 
 sliderbar = dbc.Container(children=[
     dbc.Row(
@@ -341,7 +349,6 @@ sliderbar = dbc.Container(children=[
 ],
     fluid=True,
 )
-
 
 
 def plot_traces(traces, s_fr=1):
@@ -370,7 +377,7 @@ def plot_traces(traces, s_fr=1):
 
     # changing px.line(y=trace)["data"][0] to go.Scatter(y=trace, mode="lines")
     # increase speed by factor of ~5
-    
+
     for i in range(nr_ch):
         fig.add_trace(go.Scatter(x=x_axis, y=traces[:, i], mode="lines", line=dict(
             color='#003D7F', width=1), hoverinfo='skip'), row=i+1, col=1)
@@ -389,34 +396,28 @@ def plot_traces(traces, s_fr=1):
         fig.add_trace(split_line2, row=i+1, col=1)
 
         fig.update_layout(margin=dict(l=0, r=0, t=1, b=1),
-                      paper_bgcolor='rgba(0,0,0,0)',
-                      plot_bgcolor='rgba(0,0,0,0)',
-                      showlegend=False,
-                      xaxis_fixedrange = True,
-                      )
+                          paper_bgcolor='rgba(0,0,0,0)',
+                          plot_bgcolor='rgba(0,0,0,0)',
+                          showlegend=False,
+                          xaxis_fixedrange=True,
+                          )
     return fig
 
 
 # get accuracy plot
-def get_acc_plot(a=0.5):
-
-    ### call any function to receive train, val accuracy values inside this function #####
-
-    # this will change with real data
-    df = pd.DataFrame(
-        {"Training": np.exp(-1/np.arange(2, 10, .1)) + a*2,
-         "Validation":  np.exp(-1/np.arange(2, 10, .1)) + a})
-
+def get_acc_plot(data):
     # start plotting
-    fig = px.line(df, y=["Validation", "Training"])
+    fig = px.line(y=data)
     fig.update_layout(paper_bgcolor='rgba(0,0,0,0)',
                       plot_bgcolor='rgba(0,0,0,0)',
                       margin=dict(l=0, r=0, t=0, b=0),
-                      font={'size':10,'color':'#003D7F'},
-                      xaxis={"automargin":True,"title_standoff":0, "gridcolor":'rgba(0,61,127,0.2)',"linewidth":2, "linecolor": '#003D7F',"tickfont": {'size':12, 'color': '#003D7F'}, "title": "Iterations","showgrid": True, "showline": True},
-                      yaxis={"automargin":True,"title_standoff":0, "gridcolor":'rgba(0,61,127,0.2)',"linewidth":2, "linecolor": '#003D7F',"tickfont": {'size':12, 'color': '#003D7F'}, "title": "Accuracy (%)", "showgrid": True, "showline": True},
-                      xaxis_fixedrange = True,
-                      yaxis_fixedrange = True,
+                      font={'size': 10, 'color': '#003D7F'},
+                      xaxis={"automargin": True, "title_standoff": 0, "gridcolor": 'rgba(0,61,127,0.2)', "linewidth": 2, "linecolor": '#003D7F', "tickfont": {
+                          'size': 12, 'color': '#003D7F'}, "title": "Iterations", "showgrid": True, "showline": True},
+                      yaxis={"automargin": True, "title_standoff": 0, "gridcolor": 'rgba(0,61,127,0.2)', "linewidth": 2, "linecolor": '#003D7F', "tickfont": {
+                          'size': 12, 'color': '#003D7F'}, "title": "Accuracy (%)", "showgrid": True, "showline": True},
+                      xaxis_fixedrange=True,
+                      yaxis_fixedrange=True,
                       showlegend=False,
                       )
 
@@ -439,41 +440,40 @@ def get_hists(data):
                         print_grid=False, vertical_spacing=0.0, horizontal_spacing=0.03,
                         #subplot_titles=("Power Spectrums", "", "", "Amplitude Histograms", "", "")
                         )
-    #my_layout=dict(xaxis={"automargin":True,"title_standoff":0, "gridcolor":'rgba(0,61,127,0.2)',"linewidth":2, "linecolor": '#003D7F',"tickfont": {'size':12, 'color': '#003D7F'}, "title": "Iterations","showgrid": True, "showline": True})
+    # my_layout=dict(xaxis={"automargin":True,"title_standoff":0, "gridcolor":'rgba(0,61,127,0.2)',"linewidth":2, "linecolor": '#003D7F',"tickfont": {'size':12, 'color': '#003D7F'}, "title": "Iterations","showgrid": True, "showline": True})
     for i in range(nr_ch):
         # at the moment x is fixed to 30 Hz 120 = 30 * 4 (always 4)
         fig.add_trace(go.Scatter(x=np.linspace(0, 30, 120), y=spectrums[:, i], mode="lines", line=dict(
             color='black'), hoverinfo='skip'), row=1, col=i+1)
         fig.add_trace(go.Histogram(x=histos[:, i], marker_color='LightSkyBlue',
-            opacity=0.75, histnorm="probability", hoverinfo='skip'), row=1, col=nr_ch+i+1)
+                                   opacity=0.75, histnorm="probability", hoverinfo='skip'), row=1, col=nr_ch+i+1)
 
     # in case it is necessary for histograms xbins=dict(start=-3.0,end=4,size=0.5)
     fig.update_layout(margin=dict(l=1, r=1, t=1, b=1),
-                        paper_bgcolor='rgba(0,0,0,0)',
-                        plot_bgcolor='rgba(0,0,0,0)', bargap=0.25,
-                        font={'size':10,'color':'#003D7F'},
-                        xaxis={"automargin":True,"title_standoff":0, "gridcolor":'rgba(0,61,127,0.2)',"linewidth":2, "linecolor": '#003D7F',"tickfont": {'size':12, 'color': '#003D7F'}, "title": "Frequency (Hz)","showgrid": True, "showline": True},
-                        yaxis={"automargin":True,"title_standoff":0, "gridcolor":'rgba(0,61,127,0.2)',"linewidth":2, "linecolor": '#003D7F',"tickfont": {'size':12, 'color': '#003D7F'}, "title": "Spectral density", "showgrid": True, "showline": True},
-                        showlegend=False,
-                        xaxis_fixedrange = True,
-                        yaxis_fixedrange = True,
-                        )
+                      paper_bgcolor='rgba(0,0,0,0)',
+                      plot_bgcolor='rgba(0,0,0,0)', bargap=0.25,
+                      font={'size': 10, 'color': '#003D7F'},
+                      xaxis={"automargin": True, "title_standoff": 0, "gridcolor": 'rgba(0,61,127,0.2)', "linewidth": 2, "linecolor": '#003D7F', "tickfont": {
+                          'size': 12, 'color': '#003D7F'}, "title": "Frequency (Hz)", "showgrid": True, "showline": True},
+                      yaxis={"automargin": True, "title_standoff": 0, "gridcolor": 'rgba(0,61,127,0.2)', "linewidth": 2, "linecolor": '#003D7F', "tickfont": {
+                          'size': 12, 'color': '#003D7F'}, "title": "Spectral density", "showgrid": True, "showline": True},
+                      showlegend=False,
+                      xaxis_fixedrange=True,
+                      yaxis_fixedrange=True,
+                      )
 
-    fig.update_yaxes(fixedrange = True, gridcolor='rgba(0,61,127,0.2)', linewidth=2, linecolor= '#003D7F', tickfont={'size':12, 'color': '#003D7F'}, showgrid=True, showline=True)
-    fig.update_xaxes(fixedrange = True, gridcolor='rgba(0,61,127,0.2)', linewidth=2, linecolor= '#003D7F', tickfont={'size':12, 'color': '#003D7F'}, showgrid=True, showline=True)
-
-    
+    fig.update_yaxes(fixedrange=True, gridcolor='rgba(0,61,127,0.2)', linewidth=2, linecolor='#003D7F', tickfont={
+                     'size': 12, 'color': '#003D7F'}, showgrid=True, showline=True)
+    fig.update_xaxes(fixedrange=True, gridcolor='rgba(0,61,127,0.2)', linewidth=2, linecolor='#003D7F', tickfont={
+                     'size': 12, 'color': '#003D7F'}, showgrid=True, showline=True)
 
     return fig
 
 
-def get_confusion_mat():
+def get_confusion_mat(y_true, y_pred, class_names):
 
-    y_true = [2, 0, 2, 2, 0, 1]
-    y_pred = [0, 0, 2, 2, 0, 2]
     cm = confusion_matrix(y_true, y_pred, normalize='true')
-    class_names = ['Type1', 'Type2', 'Type3']
-    df = pd.DataFrame(np.round(cm, 3), columns=class_names, index=class_names)
+    df = pd.DataFrame(np.round(cm, 2), columns=class_names, index=class_names)
 
     return df
 
@@ -510,90 +510,90 @@ Storage = html.Div(dcc.Store(id='storage_add', storage_type='local'))
 
 # background for the lower row
 backgrd = html.Div(
-                dbc.Container(style={"padding":"0","margin":"0","width": "100%", "height": "300px", "border": "0px solid #308fe3", "background-image": "url(https://previews.123rf.com/images/gonin/gonin1710/gonin171000004/87977156-blue-white-gradient-hexagons-turned-abstract-background-with-geometrical-elements-modern-3d-renderin.jpg)",
-                        'opacity': '0.15', 'filter': 'blur(20px)', "background-size":"100% 100%"},
-                        fluid=True,
-                        class_name="fixed-bottom",
-                ))
+    dbc.Container(style={"padding": "0", "margin": "0", "width": "100%", "height": "300px", "border": "0px solid #308fe3", "background-image": "url(https://previews.123rf.com/images/gonin/gonin1710/gonin171000004/87977156-blue-white-gradient-hexagons-turned-abstract-background-with-geometrical-elements-modern-3d-renderin.jpg)",
+                         'opacity': '0.15', 'filter': 'blur(20px)', "background-size": "100% 100%"},
+                  fluid=True,
+                  class_name="fixed-bottom",
+                  ))
 
 # lower row (contains all learning graphs and informations + spectrums and histograms)
 lower_row = dbc.Nav(dbc.Container(children=[
-                sliderbar,
-                dbc.Container(dbc.Row(children=[html.H4("Analytics", id="lower-bar-title",
-                                style={"font-weight": "600", "padding-top": "0px"}),
-                            ]),
+    sliderbar,
+    dbc.Container(dbc.Row(children=[html.H4("Analytics", id="lower-bar-title",
+                                            style={"font-weight": "600", "padding-top": "0px"}),
+                                    ]),
                     fluid=True,
                     ),
 
-                html.Div([dbc.Row([
-                                dbc.Col(html.H6("Confusion Matrix",
-                                style={"font-weight": "600", "margin-left": "15px"}), width={"size": 2}),
-                                dbc.Col(html.H6("AI Acuuracy",
-                                style={"font-weight": "600", "margin-left": "0px"}), width={"size": 1, "offset": 0}),
-                                dbc.Col(html.H6("Power Spectrums",
-                                style={"font-weight": "600", "margin-left": "65px"}), width={"size": 2, "offset": 0}),
-                                dbc.Col(html.H6("Amplitude Histograms",
-                                style={"font-weight": "600", "margin-left": "120px"}), width={"size": 3, "offset": 2}),
-                                ]),
-                ]),
+    html.Div([dbc.Row([
+        dbc.Col(html.H6("Confusion Matrix",
+                        style={"font-weight": "600", "margin-left": "15px"}), width={"size": 2}),
+        dbc.Col(html.H6("AI Acuuracy",
+                        style={"font-weight": "600", "margin-left": "0px"}), width={"size": 1, "offset": 0}),
+        dbc.Col(html.H6("Power Spectrums",
+                        style={"font-weight": "600", "margin-left": "65px"}), width={"size": 2, "offset": 0}),
+        dbc.Col(html.H6("Amplitude Histograms",
+                        style={"font-weight": "600", "margin-left": "120px"}), width={"size": 3, "offset": 2}),
+    ]),
+    ]),
 
-                dbc.Nav(dbc.Container(dbc.Row([
+    dbc.Nav(dbc.Container(dbc.Row([
 
-                        dbc.Container(dbc.Col(dbc.Table.from_dataframe(
-                            get_confusion_mat(), striped=False, bordered=False, hover=True, index=True, responsive=True, size="sm", color= "info", style={'color': '#003D7F','font-size':14})),
-                        style={"width": "220px", "height": "150px", "padding":"0px"}),
+        dbc.Container(dbc.Col(dbc.Table.from_dataframe(get_confusion_mat(np.array([0, 1, 2]), np.array([1, 1, 2]), ['1', '2', '3']), id="confusion-matrix",
+            striped=False, bordered=False, hover=True, index=True, responsive=True, size="sm", color="info", style={'color': '#003D7F', 'font-size': 14})),
+            style={"width": "220px", "height": "150px", "padding": "0px"}),
 
-                        dbc.Container(dbc.Col(dcc.Graph(id="accuracy", figure=get_acc_plot(),
-                            responsive=True, style={"width": "200px", "height": "150px"}, config={
-                                                            'displayModeBar': False,
-                                                            'displaylogo': False,                                       
-                                                            'scrollZoom': False,
-                                                            'editable': False,
-                                                            'showLink':False,
-                                                        })),
-                            style={"width": "200px", "height": "150px"}),
+        dbc.Container(dbc.Col(dcc.Graph(id="accuracy", figure=get_acc_plot(data=np.array(0)),
+                                        responsive=True, style={"width": "200px", "height": "150px"}, config={
+            'displayModeBar': False,
+            'displaylogo': False,
+            'scrollZoom': False,
+            'editable': False,
+            'showLink': False,
+        })),
+            style={"width": "200px", "height": "150px"}),
 
-                        dbc.Container(dbc.Col(dcc.Graph(id="hist-graphs", responsive=True,
-                        style={"width": "1350px", "height": "130px"}, config={
-                                                            'displayModeBar': True,
-                                                            'modeBarButtonsToRemove': ['zoomin', 'zoomout', 'zoom', 'pan', 'select', 'lasso2d', 'autoscale'],
-                                                            'displaylogo': False,                                       
-                                                            'scrollZoom': False,
-                                                            'editable': False,
-                                                            'showLink':False,
-                                                            'toImageButtonOptions': {
-                                                                'format': 'png',
-                                                                'filename': 'PowerSpect_Histograms',
-                                                                'width': 1600,
-                                                                'scale': 1,
-                                                                }})),
-                            style={"width": "1350px", "height": "130px"})
-                    ],
-                
-                ),
-                fluid=True,
-                style={"margin-top": "0px"}
-                ),
-                fill=True),
+        dbc.Container(dbc.Col(dcc.Graph(id="hist-graphs", responsive=True,
+                                        style={"width": "1350px", "height": "130px"}, config={
+                                            'displayModeBar': True,
+                                            'modeBarButtonsToRemove': ['zoomin', 'zoomout', 'zoom', 'pan', 'select', 'lasso2d', 'autoscale'],
+                                            'displaylogo': False,
+                                            'scrollZoom': False,
+                                            'editable': False,
+                                            'showLink':False,
+                                            'toImageButtonOptions': {
+                                                'format': 'png',
+                                                'filename': 'PowerSpect_Histograms',
+                                                'width': 1600,
+                                                'scale': 1,
+                                            }})),
+                      style={"width": "1350px", "height": "130px"})
+    ],
 
-                dbc.Container(dbc.Row(
-                    dbc.Input(placeholder="  Training information", id="train-info", disabled=True, size='sm',
-                    style={"padding":"0","margin":"0"})),
-                fluid=True,
-                class_name="g-0 mb-0 p-0",
-                style={"margin-top": "0px"}
-                    )
-                ],
-        
-        fluid=True,
-        style={"border": "0px", "width": "100%", "height": "300px"},
     ),
+        fluid=True,
+        style={"margin-top": "0px"}
+    ),
+        fill=True),
+
+    dbc.Container(dbc.Row(
+        dbc.Input(placeholder="  Training information", id="train-info", disabled=True, size='sm',
+                  style={"padding": "0", "margin": "0"})),
+                  fluid=True,
+                  class_name="g-0 mb-0 p-0",
+                  style={"margin-top": "0px"}
+                  )
+],
+
+    fluid=True,
+    style={"border": "0px", "width": "100%", "height": "300px"},
+),
     fill=True,
     class_name="fixed-bottom",
-    #links_left=True,
+    # links_left=True,
     #color= 'rgba(224, 236, 240, 0.3)',
-    #fixed="bottom",
-    )
+    # fixed="bottom",
+)
 
 # detecting keyboard keys
 my_keyboard = html.Div(Keyboard(id="keyboard"))
@@ -621,7 +621,8 @@ app.layout = dbc.Container(
      Output("scoring-labels", "data"),
      Output("epoch-sliderbar", "value"),
      Output("epoch-sliderbar", "max"),
-     Output("slider-saved-value", "data")],
+     Output("slider-saved-value", "data"),
+     Output("AI-trigger-params", "data")],
 
     [Input("keyboard", "keydown"),
      Input("keyboard", "n_keydowns"),
@@ -774,10 +775,17 @@ def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sampl
         if not score_storage is None:
             score_storage = score_storage.to_json()
 
-        return epoch_index, event, fig_traces, ps_hist_fig, epoch_minus_one_label, null_score_label, "", epoch_plus_one_label, score_storage, slider_live_value, max_sliderbar, epoch_index
+        # check epoch and score_storage to trigger ml train
+        if (not epoch_index is None) and (not score_storage is None) and (epoch_index % 10 == 0) and (epoch_index > 0):
+            ml_trigger = pd.DataFrame({"epoch_index": [epoch_index],
+                                       "score_storage": [score_storage],
+                                       "save_path": save_path}).to_json()
+        else:
+            ml_trigger = dash.no_update
 
-    return json.dumps(0), None, plot_traces(np.zeros((1000, 1))), get_hists([np.zeros((1000, 1)), np.zeros((1000, 1))]), "", "", "", "", None, None, None, None
+        return epoch_index, event, fig_traces, ps_hist_fig, epoch_minus_one_label, null_score_label, "", epoch_plus_one_label, score_storage, slider_live_value, max_sliderbar, epoch_index, ml_trigger
 
+    return json.dumps(0), None, plot_traces(np.zeros((1000, 1))), get_hists([np.zeros((1000, 1)), np.zeros((1000, 1))]), "", "", "", "", None, None, None, None, dash.no_update
 
 
 # This part has to merge to above callback after fixing issue
@@ -889,10 +897,9 @@ def action_load_button(n, filename, save_path, epoch_len, sample_fr, channel_lis
                                           return_result=False)
         print("Finished data loading")
         print(f"Max epochs: {max_epoch_nr}")
-        # [dbc.Spinner(size="sm"), " Loading..."]
         return "Loaded", json.dumps(max_epoch_nr), "", True, True, True
     else:
-        return "Load", None, "", False, False, False
+        return "Load", None, None, False, False, False
 
 # open browser
 #chrome_options = Options()
@@ -933,47 +940,101 @@ def save_button(n_clicks, input_data_loc, scoring_results):
 
 # training
 @app.callback(
-    Output("accuracy", "figure"),
-    [Input("epoch-index", "data"),
-     Input("scoring-labels", "data"),
-     Input("save-path", "data")]
+    [Output("accuracy", "figure"),
+     Output("AI-accuracy", "data"),
+     Output("confusion-matrix", "children")],
+
+    [Input("AI-trigger-params", "data"),
+     Input("AI-accuracy", "data")]
 )
-def train_indicator(epoch_index, score_storage, save_path):
-    if not epoch_index is None:
+def train_indicator(ai_params, ai_acc):
+    print("ai_acc at the beggning of the function", ai_acc)
+    if (not ai_acc is None) and (not ai_params is None):
+
+        # read params
+        ai_params = pd.read_json(ai_params)
+        epoch_index = ai_params["epoch_index"][0]
+        score_storage = ai_params["score_storage"][0]
+        save_path = ai_params["save_path"][0]
+        #
         epoch_index = int(epoch_index)
-        if (epoch_index % 10 == 0) and (not epoch_index == 0):
-            # do 1 round of training
-            print("inside train", epoch_index)
 
-            # check if there is scoring available
-            if (not score_storage is None) and len(score_storage.values) > 5:
-                score_storage = pd.read_json(score_storage)
+        # do 1 round of training
+        print("inside train", epoch_index)
 
-                # check recorded class distribution
-                rec_class = np.unique(score_storage.values)
+        # change score_storage from json to pandas
+        score_storage = pd.read_json(score_storage)
 
-                # concatinate data
-                for epoch in score_storage.keys():
-                    try:
-                        df_mid = []
-                        df_mid = pd.read_json(os.path.join(
-                            save_path, str(epoch_index) + ".json"))
-                        ps_mid = np.stack(df_mid["spectrums"]).T
-                        hist_mid = np.stack(df_mid["histograms"]).T
-                    except:
-                        print(
-                            f"Dataset for epoch #{epoch} is not found. Ignoring from this epoch.")
+        # check if there is scoring available
+        if len(score_storage.values[0]) > 5:
 
-                # split train test
+            # check recorded class distribution
+            rec_class = np.unique(score_storage.values[0])
 
-                #
-            else:
-                print(
-                    "Score storage is empty or doesn't satisfy proper epoch number. Training canceled")
-                return get_acc_plot(a=-10)
+            # initializing features vector and labels
+            features = []
+            labels = []
+            # concatinate data
+            for epoch in score_storage.keys():
+                try:
+                    df_mid = []
+                    df_mid = pd.read_json(os.path.join(
+                        save_path, str(epoch_index) + ".json"))
+                    ps_mid = np.stack(df_mid["spectrums"]).T
+                    hist_mid = np.stack(df_mid["histograms"]).T
 
-            return get_acc_plot(a=2)
-    return get_acc_plot()
+                    # concatinating features
+                    features.append(np.vstack([ps_mid, hist_mid]))
+
+                    # get labels and cat them
+                    labels.append(score_storage[epoch].values[0])
+                except:
+                    print(
+                        f"Dataset for epoch #{epoch} is not found. Ignoring this epoch for training.")
+
+            # split train test
+            features = np.stack(features)
+
+            # get features dimensions
+            n, p1, p2 = features.shape
+
+            # reshape features
+            features = features.reshape(-1, p1*p2)
+
+            # split
+            X_train, X_test, y_train, y_test = train_test_split(
+                features, labels, test_size=0.3, random_state=42)
+
+            # start training (at the moment only using XGBoost)
+            start_time = time.clock()
+            full_study, best_classifier = Classifier(Xtrain=X_train,
+                                                     ytrain=y_train,
+                                                     Xtest=X_test,
+                                                     ytest=y_test).run_xgboost(n_trials=20)
+            print(
+                f'execution time: {np.rint(time.clock() - start_time)} seconds')
+
+            # updating AI-Accuracy vector
+            ai_acc = np.hstack(
+                [np.squeeze(pd.read_json(ai_acc).values), [full_study.best_value]])
+
+            # get best classifier
+            the_classifier = XGBClassifier(**full_study.best_trial.params).fit(X_train, y_train)
+            
+
+            # get confusion matrix
+            conf_df = get_confusion_mat(y_test, the_classifier.predict(
+                X_test), [str(name) for name in np.sort(np.unique(y_test))])
+
+            print(" train then update", ai_acc)
+            return get_acc_plot(data=ai_acc), pd.DataFrame({"accuray": ai_acc}).to_json(), conf_df
+        else:
+            print(
+                "Score storage is empty or doesn't satisfy proper epoch number. Training canceled")
+            raise PreventUpdate
+
+    print("load first time", ai_acc)
+    return get_acc_plot(data=np.array([0, 0])), pd.DataFrame({"accuray": [0]}).to_json(), dash.no_update
 
 
 # run app if it get called
