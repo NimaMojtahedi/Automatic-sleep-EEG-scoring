@@ -45,7 +45,7 @@ class Classifier:
         for key, value in trial.params.items():
             print("    {}: {}".format(key, value))
 
-        return self.xgb.XGBClassifier(**trial.params)
+        return study, self.xgb.XGBClassifier(**trial.params)
 
     def run_lgb(self):
         # has problem to load module
@@ -65,7 +65,7 @@ class Classifier:
         for key, value in trial.params.items():
             print("    {}: {}".format(key, value))
 
-        return self.SVC(**trial.params)
+        return study, self.SVC(**trial.params)
 
     def run_rfc(self, n_trials=100):
         # running xgb classifier and automatically optimizing paramters
@@ -81,7 +81,7 @@ class Classifier:
         for key, value in trial.params.items():
             print("    {}: {}".format(key, value))
 
-        return self.RandomForestClassifier(**trial.params)
+        return study, self.RandomForestClassifier(**trial.params)
 
     def run_adaBoost(self, n_trials=100):
         # running xgb classifier and automatically optimizing paramters
@@ -97,7 +97,7 @@ class Classifier:
         for key, value in trial.params.items():
             print("    {}: {}".format(key, value))
 
-        return self.AdaBoostClassifier(**trial.params)
+        return study, self.AdaBoostClassifier(**trial.params)
 
     def rfc_objective(self, trial):
         # define parameters
