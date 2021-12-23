@@ -476,7 +476,7 @@ def get_confusion_mat(y_true, y_pred, class_names):
     cm = confusion_matrix(y_true, y_pred, normalize='true')
     df = pd.DataFrame(np.round(cm, 2), columns=class_names, index=class_names)
 
-    return df
+    return dbc.Table.from_dataframe(df, striped=False, bordered=False, hover=True, index=True, responsive=True, size="sm", color="info", style={'color': '#003D7F', 'font-size': 14})
 
 
 # check user input
@@ -518,6 +518,8 @@ backgrd = html.Div(
                   ))
 
 # lower row (contains all learning graphs and informations + spectrums and histograms)
+conf_matrix_contents = html.Div(children=get_confusion_mat(np.array([0, 1, 2]), np.array([1, 1, 2]), ['1', '2', '3']), id="table-contents")
+
 lower_row = dbc.Nav(dbc.Container(children=[
     sliderbar,
     dbc.Container(dbc.Row(children=[html.H4("Analytics", id="lower-bar-title",
@@ -539,9 +541,7 @@ lower_row = dbc.Nav(dbc.Container(children=[
     ]),
 
     dbc.Nav(dbc.Container(dbc.Row([
-
-        dbc.Container(dbc.Col(dbc.Table.from_dataframe(get_confusion_mat(np.array([0, 1, 2]), np.array([1, 1, 2]), ['1', '2', '3']), id="confusion-matrix",
-            striped=False, bordered=False, hover=True, index=True, responsive=True, size="sm", color="info", style={'color': '#003D7F', 'font-size': 14})),
+        dbc.Container(dbc.Col(conf_matrix_contents),
             style={"width": "220px", "height": "150px", "padding": "0px"}),
 
         dbc.Container(dbc.Col(dcc.Graph(id="accuracy", figure=get_acc_plot(data=np.array(0)),
@@ -659,7 +659,7 @@ def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sampl
     # change score_storage data format
     if not score_storage is None:
         score_storage = pd.read_json(score_storage)
-        print("score at the beginning", type(score_storage), score_storage)
+        
 
     # It is important False off_canvas
     if (n_keydowns and file_exist and not off_canvas) or ((slider_live_value != slider_saved_value) and file_exist and not off_canvas and (not slider_live_value is None) and (not slider_saved_value is None)):
@@ -673,8 +673,6 @@ def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sampl
 
         max_sliderbar = max_nr_epochs
         # marks_slidebar = {i: str(i) for i in range(1, max_sliderbar, int(max_sliderbar/10))}
-        print("Epoch index at the beginning", epoch_index)
-        # pdb.set_trace()
         # there is change in slider value
         if (slider_saved_value != slider_live_value) and (not slider_live_value is None) and (not slider_saved_value is None):
             # update epoch to current slider value
@@ -744,7 +742,7 @@ def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sampl
         # call for plot functions
         fig_traces = plot_traces(full_trace.T, s_fr=sampling_fr)
         ps_hist_fig = get_hists(data=full_ps_hist)
-        print("Epoch index after plot", epoch_index)
+        print("The current epoch index is ", epoch_index)
 
         # check and update score labels (after key left/right if they exist)
         if not score_storage is None:
@@ -852,7 +850,6 @@ def toggle_import_load_offcanvas(n1, n2, filename, save_path, secondary, self_tr
     
     if secondary == True and self_trigger == 1:
         secondary = False
-        print('I an in secondary n2')
         print(f"\n\nfilename: {filename} \nsavepath: {save_path} \nepoch_len:{epoch_len} \nsampling_fr:{sample_fr} \n\n")
         max_epoch_nr = process_input_data(path_to_file=filename,
                                         path_to_save=save_path,
@@ -860,24 +857,19 @@ def toggle_import_load_offcanvas(n1, n2, filename, save_path, secondary, self_tr
                                         end_index=-1,
                                         epoch_len=int(epoch_len),
                                         fr=int(sample_fr),
-                                        channel_list=json.loads(
-                                            channel_list),
+                                        channel_list=json.loads(channel_list),
                                         return_result=False)
-        print("Finished data loading")
         print(f"Max epochs: {max_epoch_nr}")
         return False, filename, save_path, dash.no_update, dash.no_update, "Loaded Successfully!", json.dumps(max_epoch_nr), "", True, True, True, 0, 0, secondary, 0, 0
     
     elif n2:
-        print('I am in n2')
         n2 = n2 - 1
         data_header = read_data_header(filename)
-        channel_children = define_channels(
-            channel_name=data_header["channel_names"], disabled=True, value=channel_list)
+        channel_children = define_channels(channel_name=data_header["channel_names"], disabled=True, value=json.loads(channel_list))
         secondary = True
         return dash.no_update, dash.no_update, dash.no_update, channel_children, dash.no_update, "Loading...", dash.no_update, dash.no_update, True, True, True, 0, 0, secondary, 1, 0
 
     elif n1 != n2:
-        print('I am in n1')
         n1 = n1 - 1
         # reading only data header and updating Import button configs
         subprocess.run("python import_path.py", shell=True)
@@ -905,7 +897,6 @@ def toggle_import_load_offcanvas(n1, n2, filename, save_path, secondary, self_tr
         return True, filename, save_path, channel_children, data_header.to_json(), "Load", None, dash.no_update, False, False, False, n1, n2, dash.no_update, dash.no_update, dash.no_update
     
     else:
-        print('I am in else')
         raise PreventUpdate
 
 
@@ -942,7 +933,6 @@ def get_channel_user_selection(channels):
 def save_button(n_clicks, input_data_loc, scoring_results):
 
     if n_clicks:
-        print("inside save button")
         # first create a folder or make sure the folder exist
         save_path = os.path.join(os.path.split(
             input_data_loc)[0], "SleezyResults")
@@ -966,13 +956,12 @@ def save_button(n_clicks, input_data_loc, scoring_results):
 @app.callback(
     [Output("accuracy", "figure"),
      Output("AI-accuracy", "data"),
-     Output("confusion-matrix", "children")],
+     Output("table-contents", "children")],
 
     [Input("AI-trigger-params", "data"),
      Input("AI-accuracy", "data")]
 )
 def train_indicator(ai_params, ai_acc):
-    print("ai_acc at the beggning of the function", ai_acc)
     if (not ai_acc is None) and (not ai_params is None):
 
         # read params
@@ -982,9 +971,6 @@ def train_indicator(ai_params, ai_acc):
         save_path = ai_params["save_path"][0]
         #
         epoch_index = int(epoch_index)
-
-        # do 1 round of training
-        print("inside train", epoch_index)
 
         # change score_storage from json to pandas
         score_storage = pd.read_json(score_storage)
@@ -1030,13 +1016,13 @@ def train_indicator(ai_params, ai_acc):
                 features, labels, test_size=0.3, random_state=42)
 
             # start training (at the moment only using XGBoost)
-            start_time = time.clock()
+            start_time = time.time()
             full_study, best_classifier = Classifier(Xtrain=X_train,
                                                      ytrain=y_train,
                                                      Xtest=X_test,
                                                      ytest=y_test).run_xgboost(n_trials=20)
             print(
-                f'execution time: {np.rint(time.clock() - start_time)} seconds')
+                f'execution time: {np.rint(time.time() - start_time)} seconds')
 
             # updating AI-Accuracy vector
             ai_acc = np.hstack(
@@ -1050,14 +1036,13 @@ def train_indicator(ai_params, ai_acc):
             conf_df = get_confusion_mat(y_test, the_classifier.predict(
                 X_test), [str(name) for name in np.sort(np.unique(y_test))])
 
-            print(" train then update", ai_acc)
+            
             return get_acc_plot(data=ai_acc), pd.DataFrame({"accuray": ai_acc}).to_json(), conf_df
         else:
             print(
-                "Score storage is empty or doesn't satisfy proper epoch number. Training canceled")
+                "Score storage is empty or doesn't satisfy proper epoch number. Training canceled!")
             raise PreventUpdate
 
-    print("load first time", ai_acc)
     return get_acc_plot(data=np.array([0, 0])), pd.DataFrame({"accuray": [0]}).to_json(), dash.no_update
 
 
