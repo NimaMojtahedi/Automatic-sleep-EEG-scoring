@@ -94,7 +94,7 @@ config_menu_items = html.Div(
 
 
 # define channels
-def define_channels(channel_name=["No Channel in Data"], disabled = False, value=[]):
+def define_channels(channel_name=["No Channel in Data"], disabled=False, value=[]):
     options = []
     if isinstance(channel_name[0], list):
         channel_name = channel_name[0]
@@ -112,7 +112,6 @@ def define_channels(channel_name=["No Channel in Data"], disabled = False, value
         style={'color': '#463d3b'}
     )
     return channels
-    
 
 
 # navigation toolbar with logo, software title and a button
@@ -155,13 +154,16 @@ navbar = dbc.NavbarSimple(
                                 style={'color': '#463d3b'}
                             ),
 
-                            html.Div(children=define_channels(), id="channel_def_div"),
+                            html.Div(children=define_channels(),
+                                     id="channel_def_div"),
                             dbc.Row(children=[dbc.Button("Load", id="load_button", size="sm", n_clicks=0),
                                     html.Div(children=False, id="second_execution")],
                                     class_name="mt-3"),
                             html.Br(),
-                            dcc.Loading(id="loading-state", children=html.Div(id="loading-output")),
-                            dcc.Interval( id='internal-trigger', interval=100, n_intervals=0, max_intervals=0),
+                            dcc.Loading(id="loading-state",
+                                        children=html.Div(id="loading-output")),
+                            dcc.Interval(
+                                id='internal-trigger', interval=100, n_intervals=0, max_intervals=0),
 
                         ],
                             id="import-offcanvas",
@@ -209,7 +211,8 @@ navbar = dbc.NavbarSimple(
                 ), width="auto"),
                 dbc.Col(html.A(dbc.Button("About Us", id="about-us-button", size="sm"), href="http://www.physiologie2.uni-tuebingen.de/", target="_blank"),
                         width="auto", style={'margin-left': '300px'}),
-                dbc.Col(html.A(dbc.Button("Help", id="help-button", size="sm"), href="https://github.com/NimaMojtahedi/Automatic-sleep-EEG-scoring", target="_blank"), width="auto"),
+                dbc.Col(html.A(dbc.Button("Help", id="help-button", size="sm"),
+                        href="https://github.com/NimaMojtahedi/Automatic-sleep-EEG-scoring", target="_blank"), width="auto"),
                 dbc.Col(html.A(html.Img(src=University_Logo, height="40px"),
                         href="http://www.physiologie2.uni-tuebingen.de/", target="_blank"), width="auto"),
             ],
@@ -518,7 +521,8 @@ backgrd = html.Div(
                   ))
 
 # lower row (contains all learning graphs and informations + spectrums and histograms)
-conf_matrix_contents = html.Div(children=get_confusion_mat(np.array([0, 1, 2]), np.array([1, 1, 2]), ['1', '2', '3']), id="table-contents")
+conf_matrix_contents = html.Div(children=get_confusion_mat(np.array(
+    [0, 1, 2]), np.array([1, 1, 2]), ['1', '2', '3']), id="table-contents")
 
 lower_row = dbc.Nav(dbc.Container(children=[
     sliderbar,
@@ -659,11 +663,10 @@ def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sampl
     # change score_storage data format
     if not score_storage is None:
         score_storage = pd.read_json(score_storage)
-        
 
     # It is important False off_canvas
     if (n_keydowns and file_exist and not off_canvas) or ((slider_live_value != slider_saved_value) and file_exist and not off_canvas and (not slider_live_value is None) and (not slider_saved_value is None)):
-
+        
         # change input types
         epoch_index = int(epoch_index)
         if max_nr_epochs is None:
@@ -811,8 +814,6 @@ def toggle_adv_param_offcanvas(n, is_open):
 
 # secondary execution call-back
 
-    
-
 
 # channels importing and loading callback
 @ app.callback(
@@ -841,31 +842,33 @@ def toggle_adv_param_offcanvas(n, is_open):
      Input("second_execution", "children"),
      Input("internal-trigger", "n_intervals")],
 
-     [State("user-epoch-length", "data"),
+    [State("user-epoch-length", "data"),
      State("user-sampling-frequency", "data"),
-     State("user-selected-channels", "data"),]
+     State("user-selected-channels", "data"), ]
 )
-
 def toggle_import_load_offcanvas(n1, n2, filename, save_path, secondary, self_trigger, epoch_len, sample_fr, channel_list):
-    
+
     if secondary == True and self_trigger == 1:
         secondary = False
-        print(f"\n\nfilename: {filename} \nsavepath: {save_path} \nepoch_len:{epoch_len} \nsampling_fr:{sample_fr} \n\n")
+        print(
+            f"\n\nfilename: {filename} \nsavepath: {save_path} \nepoch_len:{epoch_len} \nsampling_fr:{sample_fr} \n\n")
         max_epoch_nr = process_input_data(path_to_file=filename,
-                                        path_to_save=save_path,
-                                        start_index=0,
-                                        end_index=-1,
-                                        epoch_len=int(epoch_len),
-                                        fr=int(sample_fr),
-                                        channel_list=json.loads(channel_list),
-                                        return_result=False)
+                                          path_to_save=save_path,
+                                          start_index=0,
+                                          end_index=-1,
+                                          epoch_len=int(epoch_len),
+                                          fr=int(sample_fr),
+                                          channel_list=json.loads(
+                                              channel_list),
+                                          return_result=False)
         print(f"Max epochs: {max_epoch_nr}")
         return False, filename, save_path, dash.no_update, dash.no_update, "Loaded Successfully!", json.dumps(max_epoch_nr), "", True, True, True, 0, 0, secondary, 0, 0
-    
+
     elif n2:
         n2 = n2 - 1
         data_header = read_data_header(filename)
-        channel_children = define_channels(channel_name=data_header["channel_names"], disabled=True, value=json.loads(channel_list))
+        channel_children = define_channels(
+            channel_name=data_header["channel_names"], disabled=True, value=json.loads(channel_list))
         secondary = True
         return dash.no_update, dash.no_update, dash.no_update, channel_children, dash.no_update, "Loading...", dash.no_update, dash.no_update, True, True, True, 0, 0, secondary, 1, 0
 
@@ -895,7 +898,7 @@ def toggle_import_load_offcanvas(n1, n2, filename, save_path, secondary, self_tr
 
         # button canvas, input-data-path, save-path, channel name, save-data-header
         return True, filename, save_path, channel_children, data_header.to_json(), "Load", None, dash.no_update, False, False, False, n1, n2, dash.no_update, dash.no_update, dash.no_update
-    
+
     else:
         raise PreventUpdate
 
@@ -1029,14 +1032,15 @@ def train_indicator(ai_params, ai_acc):
                 [np.squeeze(pd.read_json(ai_acc).values), [full_study.best_value]])
 
             # get best classifier
-            the_classifier = XGBClassifier(**full_study.best_trial.params).fit(X_train, y_train)
-            
+            the_classifier = XGBClassifier(
+                **full_study.best_trial.params).fit(X_train, y_train)
 
+            print(y_test)
+            print(the_classifier.predict(X_test))
             # get confusion matrix
             conf_df = get_confusion_mat(y_test, the_classifier.predict(
                 X_test), [str(name) for name in np.sort(np.unique(y_test))])
 
-            
             return get_acc_plot(data=ai_acc), pd.DataFrame({"accuray": ai_acc}).to_json(), conf_df
         else:
             print(

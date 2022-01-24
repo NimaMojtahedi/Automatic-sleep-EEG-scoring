@@ -173,6 +173,7 @@ def process_input_data(path_to_file, path_to_save, start_index, end_index, epoch
                 "epoch_index":i} for i in range(num_of_epoch - 1)]
 
     print("Running step 2.")
+    print("Down sampling for presentation!")
     for dict_ in my_dict:
 
         # get epoch data
@@ -187,7 +188,10 @@ def process_input_data(path_to_file, path_to_save, start_index, end_index, epoch
 
             FE = FeatureEng(data=temp_data[:, i], fs=fr)
             hists.append(FE.histogram())
-            spectrums.append(FE.power_spec(keep_f=30)) # at the moment fix 30
+            spectrums.append(FE.power_spec(keep_f=30))  # at the moment fix 30
+
+        # add down sampling (5) after feature eng.
+        temp_data = temp_data[::5, :]
 
         # load calculation to dictionary
         dict_.update({"histograms": hists,
