@@ -352,8 +352,7 @@ sliderbar = dbc.Container(children=[
 )
 
 
-def plot_traces(traces, s_fr=1):
-
+def plot_traces(traces, names='Null Channel', s_fr=1):
     # traces --> n * p array
     # get trace length
     trace_len = len(traces[:, 0])
@@ -378,11 +377,11 @@ def plot_traces(traces, s_fr=1):
 
     # changing px.line(y=trace)["data"][0] to go.Scatter(y=trace, mode="lines")
     # increase speed by factor of ~5
-
+    
     for i in range(nr_ch):
         fig.add_trace(go.Scatter(x=x_axis, y=traces[:, i], mode="lines", line=dict(
             color='#003D7F', width=1), hoverinfo='skip'), row=i+1, col=1)
-
+    
     for i in range(nr_ch):
 
         # adding lines (alternative is box)
@@ -402,6 +401,7 @@ def plot_traces(traces, s_fr=1):
                           showlegend=False,
                           xaxis_fixedrange=True,
                           )
+        fig['layout'].update({'yaxis{}'.format(i+1): dict(title=names[i])})
     return fig
 
 
@@ -426,7 +426,7 @@ def get_acc_plot(data):
 
 
 # spectrum & histograms
-def get_hists(data):
+def get_hists(data, names = 'Null'):
     # list of 2 (power spectrums(by number of channels) and histograms(same))
     # first powerspectrum and then histogram
 
@@ -467,6 +467,10 @@ def get_hists(data):
                      'size': 12, 'color': '#003D7F'}, showgrid=True, showline=True)
     fig.update_xaxes(fixedrange=True, gridcolor='rgba(0,61,127,0.2)', linewidth=2, linecolor='#003D7F', tickfont={
                      'size': 12, 'color': '#003D7F'}, showgrid=True, showline=True)
+    
+    for i in range(nr_ch):
+        fig['layout'].update({'xaxis{}'.format(i+1): dict(title=names[i])})
+        fig['layout'].update({'xaxis{}'.format(nr_ch+i+1): dict(title=names[i])})
 
     return fig
 
@@ -636,9 +640,10 @@ app.layout = dbc.Container(
      Input("null_epoch_act", "value"),
      Input("scoring-labels", "data"),
      Input('epoch-sliderbar', 'value'),
-     Input("slider-saved-value", "data")]
+     Input("slider-saved-value", "data"),
+     Input("user-selected-channels", "data")]
 )
-def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sample_fr, input_default, off_canvas, score_value, score_storage, slider_live_value, slider_saved_value):
+def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sample_fr, input_default, off_canvas, score_value, score_storage, slider_live_value, slider_saved_value, channel_list):
 
     file_exist = False
     if not save_path is None:
@@ -740,8 +745,8 @@ def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sampl
                 data_right])
 
         # call for plot functions
-        fig_traces = plot_traces(full_trace.T, s_fr=sampling_fr)
-        ps_hist_fig = get_hists(data=full_ps_hist)
+        fig_traces = plot_traces(full_trace.T, names = json.loads(channel_list), s_fr=sampling_fr)
+        ps_hist_fig = get_hists(data=full_ps_hist, names = json.loads(channel_list))
         print("The current epoch index is ", epoch_index)
 
         # check and update score labels (after key left/right if they exist)
