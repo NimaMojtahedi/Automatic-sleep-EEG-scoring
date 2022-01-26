@@ -4,6 +4,7 @@
 from datetime import time
 from ntpath import join
 from types import LambdaType
+#from wsgiref.types import InputStream
 from dash_bootstrap_components._components.InputGroup import InputGroup
 from dash.exceptions import PreventUpdate
 import pandas as pd
@@ -31,7 +32,7 @@ from dash import html
 #import dash_daq as daq
 import plotly.graph_objs as go
 import dash_bootstrap_components as dbc
-from dash import Input, Output, State, html
+from dash import Input, Output, State, html, MATCH, ALL
 import plotly.express as px
 from plotly.subplots import make_subplots
 from dash.exceptions import PreventUpdate
@@ -70,6 +71,7 @@ all_storage = html.Div([dcc.Store(id="epoch-index"),  # get input from keyboard 
                         dcc.Store(id="user-epoch-length"),
                         dcc.Store(id="user-sampling-frequency"),
                         dcc.Store(id="user-selected-channels"),
+                        dcc.Store(id="user-selected-indexes"),
                         # getting updated in toggle_offcanvas
                         dcc.Store(id="input-file-default-info"),
                         dcc.Store(id="monitor-info"),
@@ -93,25 +95,54 @@ config_menu_items = html.Div(
 )
 
 
-# define channels
+# define channels & dropdowns
 def define_channels(channel_name=["No Channel in Data"], disabled=False, value=[]):
     options = []
+    dropdowns = []
+    mins = []
+    maxes = []
     if isinstance(channel_name[0], list):
         channel_name = channel_name[0]
 
-    for i in channel_name:
+    for nr, i in enumerate(channel_name):
         options.append({'label': i, 'value': i, 'disabled': disabled})
+        dropdowns.append(dbc.Select(
+                placeholder='N/A',
+                options=[
+                    {"label": "Raw Data", "value": "raw"},
+                    {"label": "Filtered", "value": "flt"},
+                    {"label": "Both!", "value": "bth"},
+                ],
+                id={"type":"ddowns", "index":nr},
+                disabled=True,
+                style={"width": "110px"},
+                class_name = 'mb-2',
+                size="sm",
+                ))
+        mins.append(dbc.Input(placeholder="Min", size="sm", id={"type":"mins", "index":nr}, disabled=True, 
+                style={"width": "70px"}, class_name = 'mb-2', inputmode = 'numeric', type="number"))
+        maxes.append(dbc.Input(placeholder="Max", size="sm", disabled=True,
+                style={"width": "70px"}, class_name = 'mb-2', id={"type":"maxes", "index":nr}, inputmode = 'numeric', type="number"))
 
-    channels = dbc.Checklist(
-        id="channel_checklist",
-        options=options,
-        value=value,
-        switch=True,
-        inputStyle={"margin-right": "10px"},
-        labelStyle={'display': 'block'},
-        style={'color': '#463d3b'}
-    )
-    return channels
+    components = dbc.Row(children=[
+            dbc.Col(dbc.Checklist(
+            id="channel_checklist",
+            options=options,
+            value=value,
+            switch=True,
+            inputStyle={"margin-right": "0px"},
+            labelStyle={'display': 'block'},
+            label_class_name = 'mb-3',
+            style={'color': '#463d3b'}
+                    ),
+                ),
+            
+            dbc.Col(dropdowns),
+            dbc.Col(mins),
+            dbc.Col(maxes),
+            ])
+    
+    return components
 
 
 # navigation toolbar with logo, software title and a button
@@ -156,6 +187,7 @@ navbar = dbc.NavbarSimple(
 
                             html.Div(children=define_channels(),
                                      id="channel_def_div"),
+                                  
                             dbc.Row(children=[dbc.Button("Load", id="load_button", size="sm", n_clicks=0),
                                     html.Div(children=False, id="second_execution")],
                                     class_name="mt-3"),
@@ -171,7 +203,7 @@ navbar = dbc.NavbarSimple(
                             is_open=False,
                             backdrop='static',
                             scrollable=True,
-                            style={
+                            style={'width' : '500px',
                                 'title-color': '#463d3b', 'background': 'rgba(224, 236, 240, 0.2)', 'backdrop-filter': 'blur(10px)'}
                         ),
                     ]
@@ -510,7 +542,7 @@ def check_user_input(user_input, type):
 # start tha main app
 # Dash apps are composed of two parts. The first part is the "layout" of the app and it describes what the application looks like.
 # The second part describes the interactivity of the application
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SPACELAB])
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SPACELAB], suppress_callback_exceptions=True)
 
 # storage
 Storage = html.Div(dcc.Store(id='storage_add', storage_type='local'))
@@ -818,8 +850,6 @@ def toggle_adv_param_offcanvas(n, is_open):
 
 
 # secondary execution call-back
-
-
 # channels importing and loading callback
 @ app.callback(
     [Output("import-offcanvas", "is_open"),
@@ -849,7 +879,7 @@ def toggle_adv_param_offcanvas(n, is_open):
 
     [State("user-epoch-length", "data"),
      State("user-sampling-frequency", "data"),
-     State("user-selected-channels", "data"), ]
+     State("user-selected-channels", "data")]
 )
 def toggle_import_load_offcanvas(n1, n2, filename, save_path, secondary, self_trigger, epoch_len, sample_fr, channel_list):
 
@@ -917,11 +947,21 @@ def handle_sample_fr_input(value):
 
 
 @app.callback(
-    Output("user-selected-channels", "data"),
-    [Input("channel_checklist", "value")]
+    [Output("user-selected-channels", "data"),
+    Output("user-selected-indexes", "data")],
+    [Input("channel_checklist", "value"),
+    Input("input-file-loc", "data")]
 )
-def get_channel_user_selection(channels):
-    return json.dumps(channels)
+def get_channel_user_selection(channels, filename):
+    try:
+        data_header = read_data_header(filename)
+        main_channel_list = data_header["channel_names"]
+        main_channel_list = main_channel_list[0]
+        user_selected_indexes = [i for i, e in enumerate(main_channel_list) if e in set(channels)]
+        user_selected_indexes = [False if i in user_selected_indexes else True for i in range(len(main_channel_list))]
+    except:
+        user_selected_indexes = [True]
+    return json.dumps(channels), user_selected_indexes
 
 
 # open browser
@@ -929,6 +969,20 @@ def get_channel_user_selection(channels):
 # chrome_options.add_argument("--kiosk")
 #driver = webdriver.Chrome(chrome_options=chrome_options)
 # driver.get('http://localhost:8050/')
+
+@app.callback(
+    [Output({'type': 'ddowns', 'index': ALL}, 'disabled'),
+    Output({'type': 'ddowns', 'index': ALL}, 'placeholder'),
+    Output({'type': 'mins', 'index': ALL}, 'disabled'),
+    Output({'type': 'maxes', 'index': ALL}, 'disabled'),],
+    Input("user-selected-indexes", "data")
+)
+def toggle_disable(indx):
+    try:
+        new_placeholders = ['N/A' if i else 'Select' for i in indx]
+    except:
+        new_placeholders = ''
+    return indx, new_placeholders, indx, indx
 
 
 @app.callback(
