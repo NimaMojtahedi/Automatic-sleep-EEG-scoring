@@ -115,14 +115,16 @@ def define_channels(channel_name=["No Channel in Data"], disabled=False, value=[
                 ],
                 id={"type":"ddowns", "index":nr},
                 disabled=True,
-                style={"width": "110px"},
+                style={"width": "110px", 'filter':'blur(150px)', 'opacity':'0'},
                 class_name = 'mb-2',
                 size="sm",
                 ))
         mins.append(dbc.Input(placeholder="Min", size="sm", id={"type":"mins", "index":nr}, disabled=True, 
-                style={"width": "70px"}, class_name = 'mb-2', inputmode = 'numeric', type="number"))
+                style={"width": "80px", 'filter':'blur(150px)', 'opacity':'0'}, class_name = 'mb-2', inputmode = 'numeric', type="number",
+                min = 0, max = 1000))
         maxes.append(dbc.Input(placeholder="Max", size="sm", disabled=True,
-                style={"width": "70px"}, class_name = 'mb-2', id={"type":"maxes", "index":nr}, inputmode = 'numeric', type="number"))
+                style={"width": "80px", 'filter':'blur(150px)', 'opacity':'0'}, class_name = 'mb-2', id={"type":"maxes", "index":nr},
+                inputmode = 'numeric', type="number", min = 0, max = 1000))
 
     components = dbc.Row(children=[
             dbc.Col(dbc.Checklist(
@@ -133,13 +135,13 @@ def define_channels(channel_name=["No Channel in Data"], disabled=False, value=[
             inputStyle={"margin-right": "0px"},
             labelStyle={'display': 'block'},
             label_class_name = 'mb-3',
-            style={'color': '#463d3b'}
+            style={'width':'110px', 'color': '#463d3b'}
                     ),
                 ),
             
-            dbc.Col(dropdowns),
-            dbc.Col(mins),
-            dbc.Col(maxes),
+            dbc.Col(dropdowns, class_name = 'me-4'),
+            dbc.Col(mins, class_name = 'px-0 g-0 mx-0'),
+            dbc.Col(maxes, class_name = 'px-0 g-0 mx-0'),
             ])
     
     return components
@@ -957,7 +959,7 @@ def get_channel_user_selection(channels, filename):
         data_header = read_data_header(filename)
         main_channel_list = data_header["channel_names"]
         main_channel_list = main_channel_list[0]
-        user_selected_indexes = [i for i, e in enumerate(main_channel_list) if e in set(channels)]
+        user_selected_indexes = [i for i, e in enumerate(main_channel_list) if e in channels]
         user_selected_indexes = [False if i in user_selected_indexes else True for i in range(len(main_channel_list))]
     except:
         user_selected_indexes = [True]
@@ -973,16 +975,37 @@ def get_channel_user_selection(channels, filename):
 @app.callback(
     [Output({'type': 'ddowns', 'index': ALL}, 'disabled'),
     Output({'type': 'ddowns', 'index': ALL}, 'placeholder'),
+    Output({'type': 'ddowns', 'index': ALL}, 'value'),
+    Output({'type': 'ddowns', 'index': ALL}, 'style'),
     Output({'type': 'mins', 'index': ALL}, 'disabled'),
-    Output({'type': 'maxes', 'index': ALL}, 'disabled'),],
+    Output({'type': 'mins', 'index': ALL}, 'placeholder'),
+    Output({'type': 'mins', 'index': ALL}, 'value'),
+    Output({'type': 'mins', 'index': ALL}, 'style'),
+    Output({'type': 'maxes', 'index': ALL}, 'disabled'),
+    Output({'type': 'maxes', 'index': ALL}, 'placeholder'),
+    Output({'type': 'maxes', 'index': ALL}, 'value'),
+    Output({'type': 'maxes', 'index': ALL}, 'style'),],
     Input("user-selected-indexes", "data")
 )
 def toggle_disable(indx):
     try:
-        new_placeholders = ['N/A' if i else 'Select' for i in indx]
+        new_placeholders_ddowns = ['N/A' if i else 'Select' for i in indx]
+        values_ddowns = ['' if i else dash.no_update for i in indx]
+        style_ddowns = [{'width':'110px', 'filter':'blur(150px)', 'transition': 'all 0.5s ease-out', 'opacity':'0'} if i else {'width':'110px', 'filter':'blur(0px)', 'transition': 'all 0.5s ease-in', 'opacity':'100'} for i in indx]
+        new_placeholders_mins = ['Min' if i else 'Min' for i in indx] # in case we decide to change placeholders in the future
+        values_mins = ['' if i else dash.no_update for i in indx]
+        style_mins = [{'width':'80px', 'filter':'blur(150px)', 'transition': 'all 0.5s ease-out', 'opacity':'0'} if i else {'width':'80px', 'filter':'blur(0px)', 'transition': 'all 0.5s ease-in', 'opacity':'100'} for i in indx]
+        new_placeholders_maxes = ['Max' if i else 'Max' for i in indx] # in case we decide to change placeholders in the future
+        values_maxes = ['' if i else dash.no_update for i in indx]
+        style_maxes = [{'width':'80px', 'filter':'blur(150px)', 'transition': 'all 0.5s ease-out', 'opacity':'0'} if i else {'width':'80px', 'filter':'blur(0px)', 'transition': 'all 0.5s ease-in', 'opacity':'100'} for i in indx]
     except:
-        new_placeholders = ''
-    return indx, new_placeholders, indx, indx
+        new_placeholders_ddowns = ''
+        values_ddowns = ''
+        new_placeholders_mins = ''
+        values_mins = ''
+        new_placeholders_maxes = ''
+        values_maxes = ''
+    return indx, new_placeholders_ddowns, values_ddowns, style_ddowns, indx, new_placeholders_mins, values_mins, style_mins, indx, new_placeholders_maxes, values_maxes, style_maxes
 
 
 @app.callback(
