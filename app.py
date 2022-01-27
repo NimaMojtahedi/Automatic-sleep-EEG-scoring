@@ -414,11 +414,11 @@ def plot_traces(traces, names='Null Channel', s_fr=1):
 
     # changing px.line(y=trace)["data"][0] to go.Scatter(y=trace, mode="lines")
     # increase speed by factor of ~5
-    
+
     for i in range(nr_ch):
         fig.add_trace(go.Scatter(x=x_axis, y=traces[:, i], mode="lines", line=dict(
             color='#003D7F', width=1), hoverinfo='skip'), row=i+1, col=1)
-    
+
     for i in range(nr_ch):
 
         # adding lines (alternative is box)
@@ -463,7 +463,7 @@ def get_acc_plot(data):
 
 
 # spectrum & histograms
-def get_hists(data, names = 'Null'):
+def get_hists(data, names='Null'):
     # list of 2 (power spectrums(by number of channels) and histograms(same))
     # first powerspectrum and then histogram
 
@@ -504,10 +504,11 @@ def get_hists(data, names = 'Null'):
                      'size': 12, 'color': '#003D7F'}, showgrid=True, showline=True)
     fig.update_xaxes(fixedrange=True, gridcolor='rgba(0,61,127,0.2)', linewidth=2, linecolor='#003D7F', tickfont={
                      'size': 12, 'color': '#003D7F'}, showgrid=True, showline=True)
-    
+
     for i in range(nr_ch):
         fig['layout'].update({'xaxis{}'.format(i+1): dict(title=names[i])})
-        fig['layout'].update({'xaxis{}'.format(nr_ch+i+1): dict(title=names[i])})
+        fig['layout'].update(
+            {'xaxis{}'.format(nr_ch+i+1): dict(title=names[i])})
 
     return fig
 
@@ -705,7 +706,7 @@ def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sampl
 
     # It is important False off_canvas
     if (n_keydowns and file_exist and not off_canvas) or ((slider_live_value != slider_saved_value) and file_exist and not off_canvas and (not slider_live_value is None) and (not slider_saved_value is None)):
-        
+
         # change input types
         epoch_index = int(epoch_index)
         if max_nr_epochs is None:
@@ -782,8 +783,10 @@ def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sampl
                 data_right])
 
         # call for plot functions
-        fig_traces = plot_traces(full_trace.T, names = json.loads(channel_list), s_fr=sampling_fr)
-        ps_hist_fig = get_hists(data=full_ps_hist, names = json.loads(channel_list))
+        fig_traces = plot_traces(full_trace.T, names=json.loads(
+            channel_list), s_fr=sampling_fr)
+        ps_hist_fig = get_hists(
+            data=full_ps_hist, names=json.loads(channel_list))
         print("The current epoch index is ", epoch_index)
 
         # check and update score labels (after key left/right if they exist)
@@ -1117,8 +1120,6 @@ def train_indicator(ai_params, ai_acc):
             the_classifier = XGBClassifier(
                 **full_study.best_trial.params).fit(X_train, y_train)
 
-            print(y_test)
-            print(the_classifier.predict(X_test))
             # get confusion matrix
             conf_df = get_confusion_mat(y_test, the_classifier.predict(
                 X_test), [str(name) for name in np.sort(np.unique(y_test))])
