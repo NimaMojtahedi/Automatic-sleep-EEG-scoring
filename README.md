@@ -1,2 +1,2 @@
-# Automatic-sleep-EEG-scoring
-In this project our aim is to automatically scoring sleep stages using EEG recordings.
+# ISCLA
+Intelligent Signal Classifier via Adaptive Learning
