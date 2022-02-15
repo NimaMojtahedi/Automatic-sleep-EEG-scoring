@@ -2,7 +2,7 @@
 import numpy as np
 from feature_eng import FeatureEng
 import pdb
-import json
+import os
 import time
 from json import JSONEncoder
 from joblib import Parallel, delayed
@@ -129,7 +129,7 @@ def check_installed_packages():
 
 
 # read large eeg data and chunk it to epochs in the dictionary format
-def process_input_data(path_to_file, path_to_save, start_index, end_index, epoch_len, fr, channel_list, return_result=False):
+def process_input_data(path_to_file, path_to_save, start_index, end_index, epoch_len, fr, channel_list, downsample=5, return_result=False):
 
     # Getting the path and loading data using mne.io.read_raw (it automatically
     # detect file ext.)
@@ -144,7 +144,7 @@ def process_input_data(path_to_file, path_to_save, start_index, end_index, epoch
         data = info.get_data().T
         print("\n\nProcessing data with all channels")
 
-    print("\n\nData is loaded! \n\nStart processing")
+    print("\n\nLoading data... \n\nStart processing")
 
     # start chunking data
     data = data[start_index:end_index]
@@ -191,7 +191,7 @@ def process_input_data(path_to_file, path_to_save, start_index, end_index, epoch
             spectrums.append(FE.power_spec(keep_f=30))  # at the moment fix 30
 
         # add down sampling (5) after feature eng.
-        temp_data = temp_data[::5, :]
+        temp_data = temp_data[::downsample, :]
 
         # load calculation to dictionary
         dict_.update({"histograms": hists,
@@ -273,3 +273,41 @@ def read_data_header(input_path):
                "lowpass_filter": info.info["lowpass"]}
 
     return pd.DataFrame(my_dict)
+
+
+def app_defaults():
+    """
+    The function returns all default values for all parameters in the app
+    as a dictionary
+    About print key, it is a placeholder for information which need
+    to be shown to user. In each trigger the information is updated
+    in this placeholder then related callback reads it as input and
+    show it in define place
+    """
+    # initialize empty dictionary
+    defaults = {}
+
+    # storage params
+    defaults.update({"epoch_index": [None],
+                     "input_file_path": None,
+                     "result_path": None,
+                     "current_directory": os.getcwd(),
+                     "epoch_length": [10],
+                     "sampling_fr": [1000],
+                     "initial_channels": None,
+                     "selected_channels": None,
+                     "selected_channel_indices": [True],
+                     "input_file_info": None,
+                     "pressed_key": None,
+                     "downsample": [5],
+                     "max_possible_epochs": [10000],
+                     "scoring_labels": None,
+                     "slider_value": [0],
+                     "AI_accuracy": [0],
+                     "AI_trigger_param": None,
+                     "confusion_matrix": None,
+                     "slider_saved_value": None,
+                     "data_loaded":False,
+                     "print": "Loading app!"})
+
+    return defaults

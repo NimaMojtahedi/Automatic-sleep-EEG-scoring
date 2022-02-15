@@ -3,10 +3,7 @@
 # required libraries
 from datetime import time
 from ntpath import join
-from types import LambdaType
-#from wsgiref.types import InputStream
-from dash_bootstrap_components._components.InputGroup import InputGroup
-from dash.exceptions import PreventUpdate
+
 import pandas as pd
 import numpy as np
 from sklearn.metrics import confusion_matrix
@@ -18,85 +15,49 @@ import subprocess
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
 from xgboost import XGBClassifier
-#from selenium import webdriver
-#from selenium.webdriver.chrome.options import Options
-
 # internal files and functions
-from utils import process_input_data, read_data_header
+from utils import app_defaults, process_input_data, read_data_header
 from models import Classifier
 
 # dash library
 import dash
+from dash_bootstrap_components._components.InputGroup import InputGroup
+from dash.exceptions import PreventUpdate
 from dash import dcc
 from dash import html
-#import dash_daq as daq
-import plotly.graph_objs as go
-import dash_bootstrap_components as dbc
 from dash import Input, Output, State, html, MATCH, ALL
-import plotly.express as px
-from plotly.subplots import make_subplots
+import dash_bootstrap_components as dbc
 from dash.exceptions import PreventUpdate
-
 # dash extension
 from dash_extensions import Keyboard
+
+
+import plotly.graph_objs as go
+import plotly.express as px
+from plotly.subplots import make_subplots
+
 
 # university logo path
 University_Logo = "https://upload.wikimedia.org/wikipedia/de/9/97/Eberhard_Karls_Universit%C3%A4t_T%C3%BCbingen.svg"
 
-##### Data and parameters storage #####
-# data header uploader & downloader
 
+# storage default params
+params = app_defaults()
 
-def data_uploader(data, path):
+# create temp. save folder - this folder needs to be deleted after closing app
+os.makedirs(os.path.join(
+    params["current_directory"], "temp_saves"), exist_ok=True)
+params["temp_save_path"] = os.path.join(
+    params["current_directory"], "temp_saves")
 
-    if isinstance(data, pd.DataFrame):
-        data.to_json(path)
-    else:
-        data = pd.DataFrame(data)
-        data.to_json(path)
-        print("data first converted to pandas dataframe before save")
-
-
-def data_downloader(path):
-
-    return pd.read_json(path)
-
-
-# create dcc store list
-all_storage = html.Div([dcc.Store(id="epoch-index"),  # get input from keyboard callback
-                        # both below ids are getting updated in toggle_offcanvas
-                        dcc.Store(id="input-file-loc"),
-                        dcc.Store(id="save-path"),
-                        # get input from on_button_click callback
-                        dcc.Store(id="user-epoch-length"),
-                        dcc.Store(id="user-sampling-frequency"),
-                        dcc.Store(id="user-selected-channels"),
-                        dcc.Store(id="user-selected-indexes"),
-                        # getting updated in toggle_offcanvas
-                        dcc.Store(id="input-file-default-info"),
-                        dcc.Store(id="monitor-info"),
-                        # get input from keyboard callback
-                        dcc.Store(id="user-pressed-key"),
-                        dcc.Store(id="max-possible-epochs"),
-                        dcc.Store(id="scoring-labels"),
-                        dcc.Store(id="slider-saved-value"),
-                        dcc.Store(id="AI-accuracy"),
-                        dcc.Store(id="AI-trigger-params")])
-#####       #####       #####       #####       #####
-
-# config menu items
-config_menu_items = html.Div(
-    [
-        dbc.DropdownMenuItem("Human", id="dropdown-menu-item-1"),
-        dbc.DropdownMenuItem("Rodent", id="dropdown-menu-item-2"),
-        dbc.DropdownMenuItem(divider=True),
-        dbc.DropdownMenuItem("Custom", id="dropdown-menu-item-3"),
-    ],
-)
+# save params to the temp_saves folder
+print("creating and storing app parameters.")
+pd.DataFrame(params).to_json(os.path.join(
+    params["temp_save_path"], "app_params.json"))
 
 
 # define channels & dropdowns
-def define_channels(channel_name=["No Channel in Data"], disabled=False, value=[]):
+def define_channels(channel_name=["No Channel in Data"], disabled=False, value=None):
     options = []
     dropdowns = []
     mins = []
@@ -107,43 +68,42 @@ def define_channels(channel_name=["No Channel in Data"], disabled=False, value=[
     for nr, i in enumerate(channel_name):
         options.append({'label': i, 'value': i, 'disabled': disabled})
         dropdowns.append(dbc.Select(
-                placeholder='N/A',
-                options=[
-                    {"label": "Raw Data", "value": "raw"},
-                    {"label": "Filtered", "value": "flt"},
-                    {"label": "Both!", "value": "bth"},
-                ],
-                id={"type":"ddowns", "index":nr},
-                disabled=True,
-                style={"width": "110px", 'filter':'blur(150px)', 'opacity':'0'},
-                class_name = 'mb-2',
-                size="sm",
-                ))
-        mins.append(dbc.Input(placeholder="Min", size="sm", id={"type":"mins", "index":nr}, disabled=True, 
-                style={"width": "80px", 'filter':'blur(150px)', 'opacity':'0'}, class_name = 'mb-2', inputmode = 'numeric', type="number",
-                min = 0, max = 1000))
+            placeholder='N/A',
+            options=[
+                {"label": "Raw Data", "value": "raw"},
+                {"label": "Filtered", "value": "flt"},
+                {"label": "Both!", "value": "bth"},
+            ],
+            id={"type": "ddowns", "index": nr},
+            disabled=True,
+            style={"width": "110px", 'filter': 'blur(150px)', 'opacity': '0'},
+            class_name='mb-2',
+            size="sm",
+        ))
+        mins.append(dbc.Input(placeholder="Min", size="sm", id={"type": "mins", "index": nr}, disabled=True,
+                              style={"width": "80px", 'filter': 'blur(150px)', 'opacity': '0'}, class_name='mb-2', inputmode='numeric', type="number",
+                              min=0, max=1000))
         maxes.append(dbc.Input(placeholder="Max", size="sm", disabled=True,
-                style={"width": "80px", 'filter':'blur(150px)', 'opacity':'0'}, class_name = 'mb-2', id={"type":"maxes", "index":nr},
-                inputmode = 'numeric', type="number", min = 0, max = 1000))
+                               style={"width": "80px", 'filter': 'blur(150px)', 'opacity': '0'}, class_name='mb-2', id={"type": "maxes", "index": nr},
+                               inputmode='numeric', type="number", min=0, max=1000))
 
     components = dbc.Row(children=[
-            dbc.Col(dbc.Checklist(
-            id="channel_checklist",
-            options=options,
-            value=value,
-            switch=True,
-            inputStyle={"margin-right": "0px"},
-            labelStyle={'display': 'block'},
-            label_class_name = 'mb-3',
-            style={'width':'110px', 'color': '#463d3b'}
-                    ),
+        dbc.Col(dbc.Checklist(
+                id="channel_checklist",
+                options=options,
+                value=value,
+                switch=True,
+                inputStyle={"margin-right": "0px"},
+                labelStyle={'display': 'block'},
+                label_class_name='mb-3',
+                style={'width': '110px', 'color': '#463d3b'}
                 ),
-            
-            dbc.Col(dropdowns, class_name = 'me-4'),
-            dbc.Col(mins, class_name = 'px-0 g-0 mx-0'),
-            dbc.Col(maxes, class_name = 'px-0 g-0 mx-0'),
-            ])
-    
+                ),
+
+        dbc.Col(dropdowns, class_name='me-4'),
+        dbc.Col(mins, class_name='px-0 g-0 mx-0'),
+        dbc.Col(maxes, class_name='px-0 g-0 mx-0'),
+    ])
     return components
 
 
@@ -153,7 +113,7 @@ navbar = dbc.NavbarSimple(
         dbc.Row(
             [
 
-                dbc.Col(html.H1("Sleezy!", style={'margin-left': '100px',
+                dbc.Col(html.H1("ISCAL", style={'margin-left': '100px',
                         'color': '#003D7F', 'fontSize': 35})),
 
 
@@ -189,7 +149,7 @@ navbar = dbc.NavbarSimple(
 
                             html.Div(children=define_channels(),
                                      id="channel_def_div"),
-                                  
+
                             dbc.Row(children=[dbc.Button("Load", id="load_button", size="sm", n_clicks=0),
                                     html.Div(children=False, id="second_execution")],
                                     class_name="mt-3"),
@@ -205,13 +165,13 @@ navbar = dbc.NavbarSimple(
                             is_open=False,
                             backdrop='static',
                             scrollable=True,
-                            style={'width' : '500px',
-                                'title-color': '#463d3b', 'background': 'rgba(224, 236, 240, 0.2)', 'backdrop-filter': 'blur(10px)'}
+                            style={'width': '500px',
+                                   'title-color': '#463d3b', 'background': 'rgba(224, 236, 240, 0.2)', 'backdrop-filter': 'blur(10px)'}
                         ),
                     ]
                 ), width="auto"),
 
-                dbc.Col(dbc.Button("Save", id="save-button",
+                dbc.Col(dbc.Button("Export", id="save-button",
                         size="sm"), width="auto"),
                 dbc.Col(html.Div(
                     [
@@ -373,6 +333,7 @@ graph_bar = dbc.Nav(dbc.Container(dbc.Row(
            "width": "100%", "height": "620px"},
     fluid=True))
 
+# slidebar
 sliderbar = dbc.Container(children=[
     dbc.Row(
         dcc.Slider(
@@ -380,7 +341,7 @@ sliderbar = dbc.Container(children=[
             min=0,
             max=10,
             step=1,
-            value=1,
+            value=0,
             tooltip={"placement": "top", "always_visible": True}
         )
     )
@@ -389,8 +350,12 @@ sliderbar = dbc.Container(children=[
 )
 
 
-def plot_traces(traces, names='Null Channel', s_fr=1):
+def graph_channels(traces, names='Null Channel', downsamples=params["downsample"][0], s_fr=1000):
     # traces --> n * p array
+    if downsamples:
+        traces = traces[::downsamples, :]
+        s_fr = int(s_fr / downsamples)
+
     # get trace length
     trace_len = len(traces[:, 0])
 
@@ -420,7 +385,6 @@ def plot_traces(traces, names='Null Channel', s_fr=1):
             color='#003D7F', width=1), hoverinfo='skip'), row=i+1, col=1)
 
     for i in range(nr_ch):
-
         # adding lines (alternative is box)
         split_line1 = go.Scatter(x=[x0, x0], y=[y0[i], y1[i]], mode="lines",
                                  hoverinfo='skip',
@@ -443,7 +407,7 @@ def plot_traces(traces, names='Null Channel', s_fr=1):
 
 
 # get accuracy plot
-def get_acc_plot(data):
+def graph_ai_metric(data):
     # start plotting
     fig = px.line(y=data)
     fig.update_layout(paper_bgcolor='rgba(0,0,0,0)',
@@ -458,12 +422,11 @@ def get_acc_plot(data):
                       yaxis_fixedrange=True,
                       showlegend=False,
                       )
-
     return fig
 
 
 # spectrum & histograms
-def get_hists(data, names='Null'):
+def graph_hs_ps(data, names='Null'):
     # list of 2 (power spectrums(by number of channels) and histograms(same))
     # first powerspectrum and then histogram
 
@@ -476,7 +439,7 @@ def get_hists(data, names='Null'):
 
     fig = make_subplots(rows=1, cols=nr_ch*2,
                         print_grid=False, vertical_spacing=0.0, horizontal_spacing=0.03,
-                        #subplot_titles=("Power Spectrums", "", "", "Amplitude Histograms", "", "")
+                        # subplot_titles=("Power Spectrums", "", "", "Amplitude Histograms", "", "")
                         )
     # my_layout=dict(xaxis={"automargin":True,"title_standoff":0, "gridcolor":'rgba(0,61,127,0.2)',"linewidth":2, "linecolor": '#003D7F',"tickfont": {'size':12, 'color': '#003D7F'}, "title": "Iterations","showgrid": True, "showline": True})
     for i in range(nr_ch):
@@ -509,59 +472,35 @@ def get_hists(data, names='Null'):
         fig['layout'].update({'xaxis{}'.format(i+1): dict(title=names[i])})
         fig['layout'].update(
             {'xaxis{}'.format(nr_ch+i+1): dict(title=names[i])})
-
     return fig
 
 
-def get_confusion_mat(y_true, y_pred, class_names):
+def graph_conf_mat(y_true, y_pred, class_names):
 
     cm = confusion_matrix(y_true, y_pred, normalize='true')
     df = pd.DataFrame(np.round(cm, 2), columns=class_names, index=class_names)
-
     return dbc.Table.from_dataframe(df, striped=False, bordered=False, hover=True, index=True, responsive=True, size="sm", color="info", style={'color': '#003D7F', 'font-size': 14})
 
 
-# check user input
-def check_user_input(user_input, type):
-
-    try:
-        # Convert it into integer
-        val = int(user_input)
-        if type.lower() == "int":
-            return True
-
-    except ValueError:
-        try:
-            # Convert it into float
-            val = float(user_input)
-            if type.lower() == "float":
-                return True
-
-        except ValueError:
-            if type.lower() == "string":
-                return True
-
-
-# start tha main app
-# Dash apps are composed of two parts. The first part is the "layout" of the app and it describes what the application looks like.
-# The second part describes the interactivity of the application
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SPACELAB], suppress_callback_exceptions=True)
-
-# storage
-Storage = html.Div(dcc.Store(id='storage_add', storage_type='local'))
+# START THE MAIN APP
+app = dash.Dash(__name__, external_stylesheets=[
+                dbc.themes.SPACELAB], suppress_callback_exceptions=True)
 
 
 # background for the lower row
 backgrd = html.Div(
-    dbc.Container(style={"padding": "0", "margin": "0", "width": "100%", "height": "300px", "border": "0px solid #308fe3", "background-image": "url(https://previews.123rf.com/images/gonin/gonin1710/gonin171000004/87977156-blue-white-gradient-hexagons-turned-abstract-background-with-geometrical-elements-modern-3d-renderin.jpg)",
+    dbc.Container(style={"padding": "0", "margin": "0", "width": "100%", "height": "300px", "border": "0px solid #308fe3",
+                         "background-image": "url(https://previews.123rf.com/images/gonin/gonin1710/gonin171000004/87977156-blue-white-gradient-hexagons-turned-abstract-background-with-geometrical-elements-modern-3d-renderin.jpg)",
                          'opacity': '0.15', 'filter': 'blur(20px)', "background-size": "100% 100%"},
                   fluid=True,
                   class_name="fixed-bottom",
                   ))
 
+
 # lower row (contains all learning graphs and informations + spectrums and histograms)
-conf_matrix_contents = html.Div(children=get_confusion_mat(np.array(
-    [0, 1, 2]), np.array([1, 1, 2]), ['1', '2', '3']), id="table-contents")
+conf_matrix_contents = html.Div(children=graph_conf_mat(np.array(
+    [1, 2, 3]), np.array([1, 2, 3]), ['1', '2', '3']), id="table-contents")
+
 
 lower_row = dbc.Nav(dbc.Container(children=[
     sliderbar,
@@ -570,7 +509,6 @@ lower_row = dbc.Nav(dbc.Container(children=[
                                     ]),
                     fluid=True,
                     ),
-
     html.Div([dbc.Row([
         dbc.Col(html.H6("Confusion Matrix",
                         style={"font-weight": "600", "margin-left": "15px"}), width={"size": 2}),
@@ -582,12 +520,11 @@ lower_row = dbc.Nav(dbc.Container(children=[
                         style={"font-weight": "600", "margin-left": "120px"}), width={"size": 3, "offset": 2}),
     ]),
     ]),
-
     dbc.Nav(dbc.Container(dbc.Row([
         dbc.Container(dbc.Col(conf_matrix_contents),
             style={"width": "220px", "height": "150px", "padding": "0px"}),
 
-        dbc.Container(dbc.Col(dcc.Graph(id="accuracy", figure=get_acc_plot(data=np.array(0)),
+        dbc.Container(dbc.Col(dcc.Graph(id="accuracy", figure=graph_ai_metric(data=np.array(params["AI_accuracy"])),
                                         responsive=True, style={"width": "200px", "height": "150px"}, config={
             'displayModeBar': False,
             'displaylogo': False,
@@ -634,9 +571,6 @@ lower_row = dbc.Nav(dbc.Container(children=[
 ),
     fill=True,
     class_name="fixed-bottom",
-    # links_left=True,
-    #color= 'rgba(224, 236, 240, 0.3)',
-    # fixed="bottom",
 )
 
 # detecting keyboard keys
@@ -645,201 +579,217 @@ my_keyboard = html.Div(Keyboard(id="keyboard"))
 
 # define app layout using dbc container
 app.layout = dbc.Container(
-    html.Div([all_storage, my_keyboard, navbar, inputbar, graph_bar, backgrd, lower_row]), fluid=True)
+    html.Div([my_keyboard, navbar, inputbar, graph_bar, backgrd, lower_row]), fluid=True)
 
 
-# all callBacks
+# CALLBACKS
 
 # keyboard callback
 # 1. reading keyboard keys / epoch-index / max number of possible epoch
 # 2. update epoch-index / user pressed key. Both in Storage
 @app.callback(
-    [Output("epoch-index", "data"),
-     Output("user-pressed-key", "data"),
-     Output("ch", "figure"),
+    [Output("ch", "figure"),
      Output("hist-graphs", "figure"),
+     Output("epoch-sliderbar", "value"),
      Output("minus-one_epoch", "value"),
      Output("null_epoch", "value"),
-     Output("null_epoch_act", "value"),
      Output("plus-one_epoch", "value"),
-     Output("scoring-labels", "data"),
-     Output("epoch-sliderbar", "value"),
-     Output("epoch-sliderbar", "max"),
-     Output("slider-saved-value", "data"),
-     Output("AI-trigger-params", "data")],
+     Output("null_epoch_act", "value"),
+     ],
 
     [Input("keyboard", "keydown"),
      Input("keyboard", "n_keydowns"),
-     Input("epoch-index", 'data'),
-     Input("max-possible-epochs", "data"),
-     Input("save-path", "data"),
-     Input("user-sampling-frequency", "data"),
-     Input("input-file-default-info", "data"),
      Input("import-offcanvas", "is_open"),
      Input("null_epoch_act", "value"),
-     Input("scoring-labels", "data"),
-     Input('epoch-sliderbar', 'value'),
-     Input("slider-saved-value", "data"),
-     Input("user-selected-channels", "data")]
+     Input('epoch-sliderbar', 'value')
+     ]
 )
-def keydown(event, n_keydowns, epoch_index, max_nr_epochs, save_path, user_sample_fr, input_default, off_canvas, score_value, score_storage, slider_live_value, slider_saved_value, channel_list):
+def keydown(event, n_keydowns, off_canvas, score_value, slider_live_value):
+    # All UI offcanvases and menus (open situation) should deactivate the keyboard
+    if (not event is None) and (not off_canvas):
+        # read slider saved value
+        slider_saved_value = params["slider_saved_value"]
+        print("section 1 keyboard")
+        # It is important False off_canvas /  # only in this case enter to this section (later more keys should come here)
+        pressed_key_condition = (event["key"] == "ArrowRight") or (
+            event["key"] == "ArrowLeft") or score_value == 1 or score_value == 2 or score_value == 3
+        if (pressed_key_condition and not off_canvas) or ((slider_live_value != slider_saved_value) and not off_canvas):
+            print("section 2 keyboard")
+            # read params
+            epoch_index = params["epoch_index"][0]
+            max_nr_epochs = params["max_possible_epochs"][0]
+            score_storage = params["scoring_labels"]
 
-    file_exist = False
-    if not save_path is None:
-        file_exist = os.path.exists(os.path.join(
-            save_path, str(0) + ".json"))
+            # there is change in slider value / update epoch to current slider value
+            if (slider_saved_value != slider_live_value):
+                print("section 3 keyboard")
+                epoch_index = int(slider_live_value)
 
-    # initialize sampling frequency
-    sampling_fr = 1
-    if (not input_default is None) and (pd.read_json(input_default).s_freq.values):
-        sampling_fr = pd.read_json(input_default).s_freq.values
-    if user_sample_fr is not None:
-        sampling_fr = int(user_sample_fr)
+            # update figures with only left/right arrow keys
+            if ((event["key"] == "ArrowRight") or (event["key"] == "ArrowLeft")):
+                print("section 4 keyboard")
+                # check what is user pressed key
+                if (event["key"] == "ArrowRight"):
+                    if epoch_index < max_nr_epochs:
+                        epoch_index += 1
 
-    # change score_value data type
-    if (not score_value is None) and score_value.isnumeric():
-        score_value = int(score_value)
+                elif (event["key"] == "ArrowLeft"):
+                    if epoch_index > 0:
+                        epoch_index -= 1
 
-    # change score_storage data format
-    if not score_storage is None:
-        score_storage = pd.read_json(score_storage)
+                slider_live_value = epoch_index
 
-    # It is important False off_canvas
-    if (n_keydowns and file_exist and not off_canvas) or ((slider_live_value != slider_saved_value) and file_exist and not off_canvas and (not slider_live_value is None) and (not slider_saved_value is None)):
+            # update figures with score labels
+            if score_value == "1" or score_value == "2" or score_value == "3":
+                print("section 5 keyboard")
+                # saving score label to storage
+                if not score_storage is None:
+                    print("section 6 keyboard")
+                    # re-scoring effect
+                    if epoch_index in score_storage.keys():
+                        score_storage[epoch_index] = int(score_value)
+                    else:
+                        score_storage = score_storage.update(
+                            {epoch_index: int(score_value)})
+                else:
+                    score_storage = {epoch_index: int(score_value)}
 
-        # change input types
-        epoch_index = int(epoch_index)
-        if max_nr_epochs is None:
-            max_nr_epochs = 10000  # temp
-        else:
-            max_nr_epochs = int(max_nr_epochs)
-
-        max_sliderbar = max_nr_epochs
-        # marks_slidebar = {i: str(i) for i in range(1, max_sliderbar, int(max_sliderbar/10))}
-        # there is change in slider value
-        if (slider_saved_value != slider_live_value) and (not slider_live_value is None) and (not slider_saved_value is None):
-            # update epoch to current slider value
-            epoch_index = int(slider_live_value)
-
-        # update figures with only left/right arrow keys
-        if ((event["key"] == "ArrowRight") or (event["key"] == "ArrowLeft")):
-
-            # check what is user pressed key
-            if (event["key"] == "ArrowRight"):
                 if epoch_index < max_nr_epochs:
                     epoch_index += 1
 
-            elif (event["key"] == "ArrowLeft"):
-                if epoch_index > 0:
-                    epoch_index -= 1
+                slider_live_value = epoch_index
 
-            slider_live_value = epoch_index
+            # read data batch from disk / check if save_path exist
+            df_mid = pd.read_json(os.path.join(
+                params["temp_save_path"], str(epoch_index) + ".json"))
+            data_mid = np.stack(df_mid["data"])
+            ps_mid = np.stack(df_mid["spectrums"]).T
+            hist_mid = np.stack(df_mid["histograms"]).T
 
-        # update figures with score labels
-        if score_value == 1 or score_value == 2 or score_value == 3:
-
-            # saving score label to storage
-            if not score_storage is None:
-                # re-scoring effect
-                if epoch_index in score_storage.keys():
-                    score_storage[epoch_index] = score_value
-                else:
-                    score_storage = pd.concat([score_storage, pd.DataFrame(
-                        [{epoch_index: score_value}])], axis=1)
+            full_ps_hist = [ps_mid, hist_mid]
+            if epoch_index == max_nr_epochs:
+                print("section 7 keyboard")
+                data_right = np.zeros_like(data_mid)
             else:
-                score_storage = pd.DataFrame([
-                    {epoch_index: score_value}])
+                data_right = np.stack(pd.read_json(os.path.join(
+                    params["temp_save_path"], str(epoch_index + 1) + ".json"))["data"])
 
-            if epoch_index < max_nr_epochs:
-                epoch_index += 1
+            if epoch_index == 0:
+                print("section 8 keyboard")
+                data_left = np.zeros_like(data_mid)
+            else:
+                data_left = np.stack(pd.read_json(os.path.join(
+                    params["temp_save_path"], str(epoch_index - 1) + ".json"))["data"])
 
-            slider_live_value = epoch_index
+            # combine mid_right datasets
+            full_trace = np.hstack(
+                [data_left,
+                    data_mid,
+                    data_right])
 
-        # read data batch from disk / check if save_path exist
-        df_mid = pd.read_json(os.path.join(
-            save_path, str(epoch_index) + ".json"))
-        data_mid = np.stack(df_mid["data"])
-        ps_mid = np.stack(df_mid["spectrums"]).T
-        hist_mid = np.stack(df_mid["histograms"]).T
+            # call for plot functions
+            fig_traces = graph_channels(
+                full_trace.T, names=params["selected_channels"], s_fr=params["sampling_fr"][0])
+            ps_hist_fig = graph_hs_ps(
+                data=full_ps_hist, names=params["selected_channels"])
+            print("The current epoch index is ", epoch_index)
+            # check and update score labels (after key left/right if they exist)
+            if not score_storage is None:
+                print("section 9 keyboard")
+                if epoch_index in score_storage.keys():
+                    null_score_label = str(
+                        score_storage[epoch_index])
+                else:
+                    null_score_label = ""
 
-        full_ps_hist = [ps_mid, hist_mid]
+                if (epoch_index - 1) in score_storage.keys():
+                    epoch_minus_one_label = str(
+                        score_storage[epoch_index - 1])
+                else:
+                    epoch_minus_one_label = ""
 
-        if epoch_index == max_nr_epochs:
-            data_right = np.zeros_like(data_mid)
-        else:
-            data_right = np.stack(pd.read_json(os.path.join(
-                save_path, str(epoch_index + 1) + ".json"))["data"])
+                if (epoch_index + 1) in score_storage.keys():
+                    epoch_plus_one_label = str(
+                        score_storage[epoch_index + 1])
+                else:
+                    epoch_plus_one_label = ""
 
-        if epoch_index == 0:
-            data_left = np.zeros_like(data_mid)
-        else:
-            data_left = np.stack(pd.read_json(os.path.join(
-                save_path, str(epoch_index - 1) + ".json"))["data"])
-
-        # combine mid_right datasets
-        full_trace = np.hstack(
-            [data_left,
-                data_mid,
-                data_right])
-
-        # call for plot functions
-        fig_traces = plot_traces(full_trace.T, names=json.loads(
-            channel_list), s_fr=sampling_fr)
-        ps_hist_fig = get_hists(
-            data=full_ps_hist, names=json.loads(channel_list))
-        print("The current epoch index is ", epoch_index)
-
-        # check and update score labels (after key left/right if they exist)
-        if not score_storage is None:
-            # pdb.set_trace()
-            if epoch_index in score_storage.keys():
-                null_score_label = str(
-                    score_storage[epoch_index].values[0])
             else:
                 null_score_label = ""
-
-            if (epoch_index - 1) in score_storage.keys():
-                epoch_minus_one_label = str(
-                    score_storage[epoch_index - 1].values[0])
-            else:
                 epoch_minus_one_label = ""
-
-            if (epoch_index + 1) in score_storage.keys():
-                epoch_plus_one_label = str(
-                    score_storage[epoch_index + 1].values[0])
-            else:
                 epoch_plus_one_label = ""
 
+            # change datatype
+            if not score_storage is None:
+                print("section 10 keyboard")
+                params["scoring_labels"] = score_storage
+
+            # check epoch and score_storage to trigger ml train
+            if (not epoch_index is None) and (not score_storage is None) and (epoch_index % 10 == 0) and (epoch_index > 0):
+                print("section 11 keyboard")
+                ml_trigger = {"epoch_index": [epoch_index],
+                              "score_storage": score_storage,
+                              "save_path": params["temp_save_path"]}
+            else:
+                ml_trigger = dash.no_update
+
+            return fig_traces, ps_hist_fig, slider_live_value, epoch_minus_one_label, null_score_label, epoch_plus_one_label, ""
+    else:
+        # Understand condition after data is loaded vs app start
+        if params["data_loaded"]:
+            assert os.path.exists(os.path.join(
+                params["temp_save_path"], str(0) + ".json"))
+            assert os.path.exists(os.path.join(
+                params["temp_save_path"], str(1) + ".json"))
+
+            # getting data
+            df_mid = pd.read_json(os.path.join(
+                params["temp_save_path"], str(0) + ".json"))
+            data_mid = np.stack(df_mid["data"])
+            ps_mid = np.stack(df_mid["spectrums"]).T
+            hist_mid = np.stack(df_mid["histograms"]).T
+            full_ps_hist = [ps_mid, hist_mid]
+
+            data_left = np.zeros_like(data_mid)
+
+            df_right = pd.read_json(os.path.join(
+                params["temp_save_path"], str(1) + ".json"))
+            data_right = np.stack(df_right["data"])
+
+            # combine mid_right datasets
+            full_trace = np.hstack(
+                [data_left,
+                    data_mid,
+                    data_right])
+
+            print("Enjoy scoring!")
+            return graph_channels(full_trace.T), graph_hs_ps(full_ps_hist), 0, dash.no_update, dash.no_update, dash.no_update, dash.no_update
         else:
-            null_score_label = ""
-            epoch_minus_one_label = ""
-            epoch_plus_one_label = ""
-
-        # change datatype
-        if not score_storage is None:
-            score_storage = score_storage.to_json()
-
-        # check epoch and score_storage to trigger ml train
-        if (not epoch_index is None) and (not score_storage is None) and (epoch_index % 10 == 0) and (epoch_index > 0):
-            ml_trigger = pd.DataFrame({"epoch_index": [epoch_index],
-                                       "score_storage": [score_storage],
-                                       "save_path": save_path}).to_json()
-        else:
-            ml_trigger = dash.no_update
-
-        return epoch_index, event, fig_traces, ps_hist_fig, epoch_minus_one_label, null_score_label, "", epoch_plus_one_label, score_storage, slider_live_value, max_sliderbar, epoch_index, ml_trigger
-
-    return json.dumps(0), None, plot_traces(np.zeros((1000, 1))), get_hists([np.zeros((1000, 1)), np.zeros((1000, 1))]), "", "", "", "", None, None, None, None, dash.no_update
+            print("Keyboard first launch")
+            return graph_channels(np.zeros((1000, 1))), graph_hs_ps([np.zeros((1000, 1)), np.zeros((1000, 1))]), 0, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
 
 # This part has to merge to above callback after fixing issue
 # reading user input for epoch len (custom value)
 @app.callback(
-    Output("user-epoch-length", "data"),
-    [Input("epoch-length-input", "value")]
+    Output("epoch-length-input", "value"),
+    Input("epoch-length-input", "value")
 )
 def user_custom_epoch_length(value):
-    return value
+    if not value is None:
+        if value.isnumeric():
+            print("section 2 epoch-length")
+            params["epoch_length"] = [int(value)]
+            time.sleep(.1)
+            print(type(params["epoch_length"]), params["epoch_length"])
+            return value
+        else:
+            # if this is the case make input invalid @Farzin
+            params["epoch_length"] = ""
+            return ""
+    else:
+        # Default value, given by user in utils.py, when app is launching
+        return str(params["epoch_length"][0])
 
 
 # Parameters collapse
@@ -858,12 +808,8 @@ def toggle_adv_param_offcanvas(n, is_open):
 # channels importing and loading callback
 @ app.callback(
     [Output("import-offcanvas", "is_open"),
-     Output("input-file-loc", "data"),
-     Output("save-path", "data"),
      Output("channel_def_div", "children"),
-     Output("input-file-default-info", "data"),
      Output("load_button", "children"),
-     Output("max-possible-epochs", "data"),
      Output("loading-output", "children"),
      Output("load_button", "disabled"),
      Output("sampling_fr_input", "disabled"),
@@ -872,135 +818,152 @@ def toggle_adv_param_offcanvas(n, is_open):
      Output("load_button", "n_clicks"),
      Output("second_execution", "children"),
      Output("internal-trigger", "max_intervals"),
-     Output("internal-trigger", "n_intervals")
+     Output("internal-trigger", "n_intervals"),
+     Output("epoch-sliderbar", "max")
      ],
 
     [Input("import-offcanvas-button", "n_clicks"),
      Input("load_button", "n_clicks"),
-     Input("input-file-loc", "data"),
-     Input("save-path", "data"),
      Input("second_execution", "children"),
-     Input("internal-trigger", "n_intervals")],
-
-    [State("user-epoch-length", "data"),
-     State("user-sampling-frequency", "data"),
-     State("user-selected-channels", "data")]
+     Input("internal-trigger", "n_intervals")]
 )
-def toggle_import_load_offcanvas(n1, n2, filename, save_path, secondary, self_trigger, epoch_len, sample_fr, channel_list):
+def toggle_import_load_offcanvas(n1, n2, secondary, self_trigger):
 
     if secondary == True and self_trigger == 1:
         secondary = False
-        print(
-            f"\n\nfilename: {filename} \nsavepath: {save_path} \nepoch_len:{epoch_len} \nsampling_fr:{sample_fr} \n\n")
-        max_epoch_nr = process_input_data(path_to_file=filename,
-                                          path_to_save=save_path,
+        print("load button running")
+        max_epoch_nr = process_input_data(path_to_file=params["input_file_path"],
+                                          path_to_save=params["temp_save_path"],
                                           start_index=0,
                                           end_index=-1,
-                                          epoch_len=int(epoch_len),
-                                          fr=int(sample_fr),
-                                          channel_list=json.loads(
-                                              channel_list),
+                                          epoch_len=params["epoch_length"][0],
+                                          fr=params["sampling_fr"][0],
+                                          channel_list=params["selected_channels"],
+                                          downsample=params["downsample"][0],
                                           return_result=False)
+        params["max_possible_epochs"] = [max_epoch_nr]
+        params["data_loaded"] = True
+        params["epoch_index"] = [0]
         print(f"Max epochs: {max_epoch_nr}")
-        return False, filename, save_path, dash.no_update, dash.no_update, "Loaded Successfully!", json.dumps(max_epoch_nr), "", True, True, True, 0, 0, secondary, 0, 0
+        return False, dash.no_update, "Loaded Successfully!", "", True, True, True, 0, 0, secondary, 0, 0, max_epoch_nr
 
     elif n2:
+        print("load button action")
         n2 = n2 - 1
-        data_header = read_data_header(filename)
         channel_children = define_channels(
-            channel_name=data_header["channel_names"], disabled=True, value=json.loads(channel_list))
+            channel_name=params["initial_channels"], disabled=True, value=params["selected_channels"])
         secondary = True
-        return dash.no_update, dash.no_update, dash.no_update, channel_children, dash.no_update, "Loading...", dash.no_update, dash.no_update, True, True, True, 0, 0, secondary, 1, 0
+        return dash.no_update, channel_children, "Loading...", dash.no_update, True, True, True, 0, 0, secondary, 1, 0, dash.no_update
 
     elif n1 != n2:
         n1 = n1 - 1
-        # reading only data header and updating Import button configs
+        print("successfuly opened import button")
+        # reading only data header and updating Import button configs (path is saved as text file in os.join.path(os.getcwd, "temp_saves") + "filename.txt")
         subprocess.run("python import_path.py", shell=True)
 
         # read input path from text file already generated
-        with open("filename.txt", 'r') as file:
+        with open(os.path.join(params["temp_save_path"], "filename.txt"), 'r') as file:
             filename = file.read()
 
-        # create path to temporal saves
-        save_path = os.path.join(os.path.split(filename)[0], "temp_save_add")
-        os.makedirs(save_path, exist_ok=True)
+        # update params
+        params["input_file_path"] = filename
 
         # start reading data header (output of the file is a dataframe)
         data_header = read_data_header(filename)
 
+        # update params
+        params["initial_channels"] = data_header["channel_names"].values[0]
+
         # I need to run the define_channels function
         channel_children = define_channels(
-            channel_name=data_header["channel_names"], disabled=False, value=[])
-
-        # save header file to disk
-        data_uploader(data=data_header,
-                      path=os.path.join(save_path, "header_data.json"))
+            channel_name=params["initial_channels"], disabled=False, value=[])
 
         # button canvas, input-data-path, save-path, channel name, save-data-header
-        return True, filename, save_path, channel_children, data_header.to_json(), "Load", None, dash.no_update, False, False, False, n1, n2, dash.no_update, dash.no_update, dash.no_update
+        return True, channel_children, "Load", dash.no_update, False, False, False, n1, n2, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
     else:
+        print("off-canvas load app is launching")
         raise PreventUpdate
 
 
 @ app.callback(
-    Output("user-sampling-frequency", "data"),
+    Output("sampling_fr_input", "value"),
     [Input("sampling_fr_input", "value")]
 )
 def handle_sample_fr_input(value):
-    return value
+    if not value is None:
+        if value.isnumeric():
+            print("section 2 sampling frequency")
+            params["sampling_fr"] = [int(value)]
+            time.sleep(.1)
+            return value
+        else:
+            params["sampling_fr"] = ""
+            return ""
+    else:
+        print("sampling frequency app is launching")
+        return str(params["sampling_fr"][0])
 
 
-@app.callback(
-    [Output("user-selected-channels", "data"),
-    Output("user-selected-indexes", "data")],
-    [Input("channel_checklist", "value"),
-    Input("input-file-loc", "data")]
+@ app.callback(
+    Output("channel_checklist", "value"),
+    Input("channel_checklist", "value")
 )
-def get_channel_user_selection(channels, filename):
-    try:
-        data_header = read_data_header(filename)
-        main_channel_list = data_header["channel_names"]
-        main_channel_list = main_channel_list[0]
-        user_selected_indexes = [i for i, e in enumerate(main_channel_list) if e in channels]
-        user_selected_indexes = [False if i in user_selected_indexes else True for i in range(len(main_channel_list))]
-    except:
-        user_selected_indexes = [True]
-    return json.dumps(channels), user_selected_indexes
+def get_channel_user_selection(channels):
+    # pdb.set_trace()
+    if not channels is None:
+        try:
+            main_channel_list = params["initial_channels"]
+            user_selected_indices = [i for i, e in enumerate(
+                main_channel_list) if e in channels]
+            user_selected_indices = [
+                False if i in user_selected_indices else True for i in range(len(main_channel_list))]
+        except:
+            user_selected_indices = [True]
+
+        params["selected_channels"] = channels
+        params["selected_channel_indices"] = user_selected_indices
+        time.sleep(.1)
+        return channels
+    else:
+        params["selected_channels"] = []
+        print("channel user selection app is launching")
+        return params["selected_channels"]
 
 
-# open browser
-#chrome_options = Options()
-# chrome_options.add_argument("--kiosk")
-#driver = webdriver.Chrome(chrome_options=chrome_options)
-# driver.get('http://localhost:8050/')
-
-@app.callback(
+# inside import button (filters)
+@ app.callback(
     [Output({'type': 'ddowns', 'index': ALL}, 'disabled'),
-    Output({'type': 'ddowns', 'index': ALL}, 'placeholder'),
-    Output({'type': 'ddowns', 'index': ALL}, 'value'),
-    Output({'type': 'ddowns', 'index': ALL}, 'style'),
-    Output({'type': 'mins', 'index': ALL}, 'disabled'),
-    Output({'type': 'mins', 'index': ALL}, 'placeholder'),
-    Output({'type': 'mins', 'index': ALL}, 'value'),
-    Output({'type': 'mins', 'index': ALL}, 'style'),
-    Output({'type': 'maxes', 'index': ALL}, 'disabled'),
-    Output({'type': 'maxes', 'index': ALL}, 'placeholder'),
-    Output({'type': 'maxes', 'index': ALL}, 'value'),
-    Output({'type': 'maxes', 'index': ALL}, 'style'),],
-    Input("user-selected-indexes", "data")
+     Output({'type': 'ddowns', 'index': ALL}, 'placeholder'),
+     Output({'type': 'ddowns', 'index': ALL}, 'value'),
+     Output({'type': 'ddowns', 'index': ALL}, 'style'),
+     Output({'type': 'mins', 'index': ALL}, 'disabled'),
+     Output({'type': 'mins', 'index': ALL}, 'placeholder'),
+     Output({'type': 'mins', 'index': ALL}, 'value'),
+     Output({'type': 'mins', 'index': ALL}, 'style'),
+     Output({'type': 'maxes', 'index': ALL}, 'disabled'),
+     Output({'type': 'maxes', 'index': ALL}, 'placeholder'),
+     Output({'type': 'maxes', 'index': ALL}, 'value'),
+     Output({'type': 'maxes', 'index': ALL}, 'style'), ],
+    Input("channel_checklist", "value")  # we don't use it
 )
-def toggle_disable(indx):
+def toggle_disable(null_):
+    indx = params["selected_channel_indices"]
     try:
         new_placeholders_ddowns = ['N/A' if i else 'Select' for i in indx]
         values_ddowns = ['' if i else dash.no_update for i in indx]
-        style_ddowns = [{'width':'110px', 'filter':'blur(150px)', 'transition': 'all 0.5s ease-out', 'opacity':'0'} if i else {'width':'110px', 'filter':'blur(0px)', 'transition': 'all 0.5s ease-in', 'opacity':'100'} for i in indx]
-        new_placeholders_mins = ['Min' if i else 'Min' for i in indx] # in case we decide to change placeholders in the future
+        style_ddowns = [{'width': '110px', 'filter': 'blur(50px)', 'transition': 'all 0.3s ease-out', 'opacity': '0'} if i else {
+            'width': '110px', 'filter': 'blur(0px)', 'transition': 'all 0.3s ease-in', 'opacity': '100'} for i in indx]
+        # in case we decide to change placeholders in the future
+        new_placeholders_mins = ['Min' if i else 'Min' for i in indx]
         values_mins = ['' if i else dash.no_update for i in indx]
-        style_mins = [{'width':'80px', 'filter':'blur(150px)', 'transition': 'all 0.5s ease-out', 'opacity':'0'} if i else {'width':'80px', 'filter':'blur(0px)', 'transition': 'all 0.5s ease-in', 'opacity':'100'} for i in indx]
-        new_placeholders_maxes = ['Max' if i else 'Max' for i in indx] # in case we decide to change placeholders in the future
+        style_mins = [{'width': '80px', 'filter': 'blur(50px)', 'transition': 'all 0.3s ease-out', 'opacity': '0'} if i else {
+            'width': '80px', 'filter': 'blur(0px)', 'transition': 'all 0.3s ease-in', 'opacity': '100'} for i in indx]
+        # in case we decide to change placeholders in the future
+        new_placeholders_maxes = ['Max' if i else 'Max' for i in indx]
         values_maxes = ['' if i else dash.no_update for i in indx]
-        style_maxes = [{'width':'80px', 'filter':'blur(150px)', 'transition': 'all 0.5s ease-out', 'opacity':'0'} if i else {'width':'80px', 'filter':'blur(0px)', 'transition': 'all 0.5s ease-in', 'opacity':'100'} for i in indx]
+        style_maxes = [{'width': '80px', 'filter': 'blur(50px)', 'transition': 'all 0.3s ease-out', 'opacity': '0'} if i else {
+            'width': '80px', 'filter': 'blur(0px)', 'transition': 'all 0.3s ease-in', 'opacity': '100'} for i in indx]
     except:
         new_placeholders_ddowns = ''
         values_ddowns = ''
@@ -1011,64 +974,25 @@ def toggle_disable(indx):
     return indx, new_placeholders_ddowns, values_ddowns, style_ddowns, indx, new_placeholders_mins, values_mins, style_mins, indx, new_placeholders_maxes, values_maxes, style_maxes
 
 
-@app.callback(
-    Output("save-button", "children"),
-
-    [Input("save-button", "n_clicks"),
-     Input("input-file-loc", "data"),
-     Input("scoring-labels", "data")]
-)
-def save_button(n_clicks, input_data_loc, scoring_results):
-
-    if n_clicks:
-        # first create a folder or make sure the folder exist
-        save_path = os.path.join(os.path.split(
-            input_data_loc)[0], "SleezyResults")
-        os.makedirs(save_path, exist_ok=True)
-
-        # saving scoring results
-        #   1. reading as pandas dataframe
-        scoring_results = pd.read_json(scoring_results)
-
-        #   2. saving in any suitable format
-        scoring_results.to_json(os.path.join(save_path, "score_results.json"))
-
-        scoring_results.to_csv(os.path.join(
-            save_path, "score_results.csv"), index=False)
-
-        return "Save"
-    return "Save"
-
-
-# training
-@app.callback(
+# training ML
+@ app.callback(
     [Output("accuracy", "figure"),
-     Output("AI-accuracy", "data"),
      Output("table-contents", "children")],
 
-    [Input("AI-trigger-params", "data"),
-     Input("AI-accuracy", "data")]
+    Input("epoch-sliderbar", "value")
 )
-def train_indicator(ai_params, ai_acc):
-    if (not ai_acc is None) and (not ai_params is None):
+def train_indicator(live_slider):
 
-        # read params
-        ai_params = pd.read_json(ai_params)
-        epoch_index = ai_params["epoch_index"][0]
-        score_storage = ai_params["score_storage"][0]
-        save_path = ai_params["save_path"][0]
-        #
-        epoch_index = int(epoch_index)
-
-        # change score_storage from json to pandas
-        score_storage = pd.read_json(score_storage)
-
+    score_storage = params["scoring_labels"]
+    epoch_index = params["epoch_index"][0]
+    if not epoch_index is None:
+        print("section 1 train indicator")
         # check if there is scoring available
-        if len(score_storage.values[0]) > 5:
+        if (not score_storage is None) and (len(score_storage.keys()) > 10) and (len(score_storage.keys()) % 10 == 0):
 
             # check recorded class distribution
-            rec_class = np.unique(score_storage.values[0])
-
+            rec_class = np.unique(list(score_storage.values()))
+            print("section 2 train indicator")
             # initializing features vector and labels
             features = []
             labels = []
@@ -1077,7 +1001,7 @@ def train_indicator(ai_params, ai_acc):
                 try:
                     df_mid = []
                     df_mid = pd.read_json(os.path.join(
-                        save_path, str(epoch_index) + ".json"))
+                        params["temp_save_path"], str(epoch_index) + ".json"))
                     ps_mid = np.stack(df_mid["spectrums"]).T
                     hist_mid = np.stack(df_mid["histograms"]).T
 
@@ -1085,7 +1009,7 @@ def train_indicator(ai_params, ai_acc):
                     features.append(np.vstack([ps_mid, hist_mid]))
 
                     # get labels and cat them
-                    labels.append(score_storage[epoch].values[0])
+                    labels.append(score_storage[epoch])
                 except:
                     print(
                         f"Dataset for epoch #{epoch} is not found. Ignoring this epoch for training.")
@@ -1113,26 +1037,61 @@ def train_indicator(ai_params, ai_acc):
                 f'execution time: {np.rint(time.time() - start_time)} seconds')
 
             # updating AI-Accuracy vector
-            ai_acc = np.hstack(
-                [np.squeeze(pd.read_json(ai_acc).values), [full_study.best_value]])
+            params["AI_accuracy"] = np.hstack(
+                [params["AI_accuracy"], [full_study.best_value]])
 
             # get best classifier
             the_classifier = XGBClassifier(
                 **full_study.best_trial.params).fit(X_train, y_train)
 
             # get confusion matrix
-            conf_df = get_confusion_mat(y_test, the_classifier.predict(
+            conf_df = graph_conf_mat(y_test, the_classifier.predict(
                 X_test), [str(name) for name in np.sort(np.unique(y_test))])
 
-            return get_acc_plot(data=ai_acc), pd.DataFrame({"accuray": ai_acc}).to_json(), conf_df
+            return graph_ai_metric(data=params["AI_accuracy"]), conf_df
         else:
             print(
                 "Score storage is empty or doesn't satisfy proper epoch number. Training canceled!")
             raise PreventUpdate
+    else:
+        print("Train app is launching")
+        raise PreventUpdate
 
-    return get_acc_plot(data=np.array([0, 0])), pd.DataFrame({"accuray": [0]}).to_json(), dash.no_update
+
+# save button (remain)
+"""
+@ app.callback(
+    Output("save-button", "children"),
+
+    [Input("save-button", "n_clicks"),
+     Input("input-file-loc", "data"),
+     Input("scoring-labels", "data")]
+)
+def save_button(n_clicks, input_data_loc, scoring_results):
+
+    if n_clicks:
+        # first create a folder or make sure the folder exist
+        save_path = os.path.join(os.path.split(
+            input_data_loc)[0], "SleezyResults")
+        os.makedirs(save_path, exist_ok=True)
+
+        # saving scoring results
+        #   1. reading as pandas dataframe
+        scoring_results = pd.read_json(scoring_results)
+
+        #   2. saving in any suitable format
+        scoring_results.to_json(os.path.join(save_path, "score_results.json"))
+
+        scoring_results.to_csv(os.path.join(
+            save_path, "score_results.csv"), index=False)
+
+        return "Save"
+    return "Save"
+"""
 
 
 # run app if it get called
 if __name__ == '__main__':
+    import warnings
+    warnings.filterwarnings('ignore')
     app.run_server(debug=True, threaded=True)

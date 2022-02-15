@@ -86,6 +86,7 @@ exp.edf
 filename.txt
 temp_save_add/
 SleezyResults/
+temp_saves/
 
 # pyenv
 .python-version
